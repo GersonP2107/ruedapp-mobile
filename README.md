@@ -68,9 +68,9 @@ Las contribuciones son bienvenidas. Por favor, revisa las [guidelines para contr
 
 ## ℹ️ Sobre el Autor
 
-Desarrollada por [Tu Nombre Completo]  
+Desarrollada por Gerson Pereira  
 Desarrollador Full Stack | QA Automation | Apasionado por el aprendizaje y la solución de problemas reales.
 
-[LinkedIn](https://www.linkedin.com/in/gerson-urrea-pereira/) | [Email](mailto:gerson.xxxx@gmail.com)
+[LinkedIn](https://www.linkedin.com/in/gerson-urrea-pereira/) | [Email](mailto:contacto@pereiradev.com)
 
 ---
