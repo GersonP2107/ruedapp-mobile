@@ -1,6 +1,9 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { router } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useProfile, useVehicles } from '../../hooks/useSupabase';
 
 // Tipos para los vehículos
 interface Vehicle {
@@ -13,25 +16,19 @@ interface Vehicle {
 }
 
 const ProfileScreen = () => {
-  // Estado para múltiples vehículos
-  const [vehicles, setVehicles] = useState<Vehicle[]>([
-    {
-      id: '1',
-      model: 'Toyota Corolla',
-      plate: 'ABC-123',
-      year: 2020,
-      color: 'Blanco',
-      isActive: true
-    },
-    {
-      id: '2',
-      model: 'Chevrolet Spark',
-      plate: 'XYZ-789',
-      year: 2019,
-      color: 'Rojo',
-      isActive: false
-    }
-  ]);
+  const { user, logout } = useAuth();
+  const { profile, loading: profileLoading, error: profileError, fetchProfile, updateProfile } = useProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    phone: '',
+    address: '',
+    city: ''
+  });
+
+  // Hook para obtener vehículos del usuario
+  const { vehicles: userVehicles, loading: vehiclesLoading, error: vehiclesError, fetchVehicles, addVehicle } = useVehicles();
+  const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null);
 
   // Estado para el modal de agregar vehículo
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
@@ -58,72 +55,117 @@ const ProfileScreen = () => {
     Alert.alert('Ayuda', 'Centro de ayuda y soporte');
   };
 
-  const handleLogout = () => {
+
+  useEffect(() => {
+    if (profile) {
+      setEditForm({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+        city: profile.city || ''
+      });
+    }
+  }, [profile]);
+  
+  const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
       '¿Estás seguro que deseas cerrar sesión?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar Sesión', style: 'destructive' }
+        { 
+          text: 'Cerrar Sesión', 
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/welcome');
+          }
+        },
       ]
     );
   };
 
-  // Función para seleccionar vehículo activo
+  const handleSaveProfile = async () => {
+    try {
+      const result = await updateProfile(editForm);
+      if (result.success) {
+        setIsEditing(false);
+        Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      } else {
+        Alert.alert('Error', result.error || 'No se pudo actualizar el perfil');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'No se pudo actualizar el perfil');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (profile) {
+      setEditForm({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+        city: profile.city || ''
+      });
+    }
+  };
+
+  // Agregar botón de logout en la sección de menú
   const handleSelectVehicle = (vehicleId: string) => {
-    setVehicles(prevVehicles => 
-      prevVehicles.map(vehicle => ({
-        ...vehicle,
-        isActive: vehicle.id === vehicleId
-      }))
-    );
+    setActiveVehicleId(vehicleId);
     Alert.alert('Vehículo Seleccionado', 'El vehículo ha sido seleccionado como activo');
   };
 
   // Función para agregar nuevo vehículo
-  const handleAddVehicle = () => {
+  const handleAddVehicle = async () => {
     if (!newVehicle.model || !newVehicle.plate || !newVehicle.year || !newVehicle.color) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
 
-    const vehicle: Vehicle = {
-      id: Date.now().toString(),
-      model: newVehicle.model,
-      plate: newVehicle.plate.toUpperCase(),
-      year: parseInt(newVehicle.year),
-      color: newVehicle.color,
-      isActive: vehicles.length === 0 // Si es el primer vehículo, hacerlo activo
-    };
+    try {
+      // Obtener el primer tipo de vehículo disponible (Automóvil por defecto)
+      const vehicleData = {
+        vehicle_type_id: '0174aecb-9400-4f6a-96d1-0925f9b47431', // ID del tipo Automóvil
+        license_plate: newVehicle.plate.toUpperCase(),
+        brand: 'Genérico', // Se puede agregar un campo brand al formulario después
+        model: newVehicle.model,
+        year: parseInt(newVehicle.year),
+        color: newVehicle.color
+      };
 
-    setVehicles(prevVehicles => [...prevVehicles, vehicle]);
-    setNewVehicle({ model: '', plate: '', year: '', color: '' });
-    setShowAddVehicleModal(false);
-    Alert.alert('Éxito', 'Vehículo agregado correctamente');
+      const result = await addVehicle(vehicleData);
+      
+      if (result.success) {
+        setNewVehicle({ model: '', plate: '', year: '', color: '' });
+        setShowAddVehicleModal(false);
+        Alert.alert('Éxito', 'Vehículo agregado correctamente');
+      } else {
+        Alert.alert('Error', result.error || 'No se pudo agregar el vehículo');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Error al agregar vehículo: ' + error.message);
+    }
   };
 
   // Función para eliminar vehículo
-  const handleDeleteVehicle = (vehicleId: string) => {
-    const vehicleToDelete = vehicles.find(v => v.id === vehicleId);
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    const vehicleToDelete = userVehicles.find(v => v.id === vehicleId);
     
     Alert.alert(
       'Eliminar Vehículo',
-      `¿Estás seguro que deseas eliminar ${vehicleToDelete?.model} (${vehicleToDelete?.plate})?`,
+      `¿Estás seguro que deseas eliminar ${vehicleToDelete?.brand} ${vehicleToDelete?.model} (${vehicleToDelete?.license_plate})?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            const updatedVehicles = vehicles.filter(v => v.id !== vehicleId);
-            
-            // Si eliminamos el vehículo activo y hay otros vehículos, activar el primero
-            if (vehicleToDelete?.isActive && updatedVehicles.length > 0) {
-              updatedVehicles[0].isActive = true;
-            }
-            
-            setVehicles(updatedVehicles);
-            Alert.alert('Eliminado', 'Vehículo eliminado correctamente');
+          onPress: async () => {
+            // Aquí usarías el método deleteVehicle del hook useVehicles
+            // Por ahora solo mostramos un mensaje
+            Alert.alert('Función en desarrollo', 'La eliminación de vehículos se implementará próximamente');
           }
         }
       ]
@@ -131,7 +173,38 @@ const ProfileScreen = () => {
   };
 
   // Obtener vehículo activo
-  const activeVehicle = vehicles.find(vehicle => vehicle.isActive);
+  const activeVehicle = userVehicles.find(vehicle => vehicle.id === activeVehicleId) || userVehicles[0];
+  
+  // Efecto para verificar si el usuario tiene vehículos
+  useEffect(() => {
+    if (!vehiclesLoading && !vehiclesError && userVehicles.length === 0) {
+      const timer = setTimeout(() => {
+        Alert.alert(
+          'Sin vehículos registrados',
+          'No tienes ningún vehículo registrado. Por favor, agrega al menos un vehículo antes de continuar usando la aplicación.',
+          [
+            {
+              text: 'Agregar vehículo',
+              onPress: () => setShowAddVehicleModal(true)
+            },
+            {
+              text: 'Más tarde',
+              style: 'cancel'
+            }
+          ]
+        );
+      }, 1000); // Esperar 1 segundo para que se cargue la interfaz
+      
+      return () => clearTimeout(timer);
+    }
+  }, [vehiclesLoading, vehiclesError, userVehicles.length]);
+  
+  // Establecer vehículo activo por defecto
+  useEffect(() => {
+    if (userVehicles.length > 0 && !activeVehicleId) {
+      setActiveVehicleId(userVehicles[0].id);
+    }
+  }, [userVehicles, activeVehicleId]);
 
   return (
     <View style={styles.container}>
@@ -154,21 +227,57 @@ const ProfileScreen = () => {
             </View>
             
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>Gerson Pereira</Text>
-              <Text style={styles.userEmail}>gerson@example.com</Text>
-              <Text style={styles.userPhone}>+57 300 123 4567</Text>
+              {isEditing ? (
+                <>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editForm.full_name}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, full_name: text }))}
+                    placeholder="Nombre completo"
+                  />
+                  <TextInput
+                    style={styles.editInput}
+                    value={editForm.phone}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, phone: text }))}
+                    placeholder="Teléfono"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.userName}>
+                    {profile?.full_name || user?.fullName || 'Usuario'}
+                  </Text>
+                  <Text style={styles.userEmail}>
+                    {profile?.email || user?.email || 'Sin email'}
+                  </Text>
+                  <Text style={styles.userPhone}>
+                    {profile?.phone || 'Sin teléfono'}
+                  </Text>
+                </>
+              )}
             </View>
             
-            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-              <Ionicons name="pencil" size={20} color="#22c55e" />
-            </TouchableOpacity>
+            {isEditing ? (
+              <View style={styles.editActions}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+                  <Ionicons name="checkmark" size={20} color="#22c55e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                  <Ionicons name="close" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
+                <Ionicons name="pencil" size={20} color="#22c55e" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         {/* Vehicles Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mis Vehículos ({vehicles.length})</Text>
+            <Text style={styles.sectionTitle}>Mis Vehículos ({userVehicles.length})</Text>
             <TouchableOpacity 
               style={styles.addButton} 
               onPress={() => setShowAddVehicleModal(true)}
@@ -177,55 +286,212 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {vehicles.length === 0 ? (
+          {vehiclesLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Cargando vehículos...</Text>
+            </View>
+          ) : vehiclesError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error al cargar vehículos: {vehiclesError}</Text>
+              <TouchableOpacity onPress={fetchVehicles} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Reintentar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : userVehicles.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="car-outline" size={48} color="#9ca3af" />
               <Text style={styles.emptyStateText}>No tienes vehículos registrados</Text>
               <Text style={styles.emptyStateSubtext}>Agrega tu primer vehículo para comenzar</Text>
             </View>
           ) : (
-            vehicles.map((vehicle) => (
-              <View key={vehicle.id} style={[styles.vehicleCard, vehicle.isActive && styles.activeVehicleCard]}>
-                <View style={[styles.vehicleIcon, vehicle.isActive && styles.activeVehicleIcon]}>
-                  <Ionicons name="car" size={24} color={vehicle.isActive ? "#ffffff" : "#22c55e"} />
-                </View>
-                <View style={styles.vehicleInfo}>
-                  <View style={styles.vehicleHeader}>
-                    <Text style={styles.vehicleModel}>{vehicle.model} {vehicle.year}</Text>
-                    {vehicle.isActive && (
-                      <View style={styles.activeBadge}>
-                        <Text style={styles.activeBadgeText}>ACTIVO</Text>
-                      </View>
+            userVehicles.map((vehicle) => {
+              const isActive = vehicle.id === activeVehicleId;
+              return (
+                <View key={vehicle.id} style={[styles.vehicleCard, isActive && styles.activeVehicleCard]}>
+                  <View style={[styles.vehicleIcon, isActive && styles.activeVehicleIcon]}>
+                    <Ionicons 
+                      name={vehicle.vehicle_type?.name === 'Motocicleta' ? 'bicycle' : 'car'} 
+                      size={24} 
+                      color={isActive ? "#ffffff" : "#22c55e"} 
+                    />
+                  </View>
+                  <View style={styles.vehicleInfo}>
+                    <View style={styles.vehicleHeader}>
+                      <Text style={styles.vehicleModel}>{vehicle.brand} {vehicle.model} {vehicle.year}</Text>
+                      {isActive && (
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeBadgeText}>ACTIVO</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.vehiclePlate}>{vehicle.license_plate}</Text>
+                    <Text style={styles.vehicleColor}>{vehicle.color}</Text>
+                    {vehicle.vehicle_type && (
+                      <Text style={styles.vehicleType}>{vehicle.vehicle_type.name}</Text>
                     )}
                   </View>
-                  <Text style={styles.vehiclePlate}>{vehicle.plate}</Text>
-                  <Text style={styles.vehicleColor}>{vehicle.color}</Text>
-                </View>
-                <View style={styles.vehicleActions}>
-                  {!vehicle.isActive && (
+                  <View style={styles.vehicleActions}>
+                    {!isActive && (
+                      <TouchableOpacity 
+                        style={styles.selectButton}
+                        onPress={() => handleSelectVehicle(vehicle.id)}
+                      >
+                        <Ionicons name="checkmark-circle-outline" size={20} color="#22c55e" />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity 
-                      style={styles.selectButton}
-                      onPress={() => handleSelectVehicle(vehicle.id)}
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteVehicle(vehicle.id)}
                     >
-                      <Ionicons name="checkmark-circle-outline" size={20} color="#22c55e" />
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
                     </TouchableOpacity>
-                  )}
-                  <TouchableOpacity 
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteVehicle(vehicle.id)}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                  </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
+          )}
+        </View>
+
+        {/* Información Personal */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person-outline" size={24} color="#6b7280" />
+            <Text style={styles.sectionTitle}>Información Personal</Text>
+            {!isEditing && (
+              <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editSectionButton}>
+                <Ionicons name="pencil" size={16} color="#22c55e" />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {profileLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Cargando información...</Text>
+            </View>
+          ) : profileError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color="#ef4444" />
+              <Text style={styles.errorText}>Error al cargar el perfil</Text>
+              <TouchableOpacity onPress={fetchProfile} style={styles.retryButton}>
+                <Text style={styles.retryText}>Reintentar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {isEditing ? (
+                <>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Nombre Completo</Text>
+                    <TextInput
+                      style={styles.editInput}
+                      value={editForm.full_name}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, full_name: text }))}
+                      placeholder="Ingresa tu nombre completo"
+                    />
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Teléfono</Text>
+                    <TextInput
+                      style={styles.editInput}
+                      value={editForm.phone}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, phone: text }))}
+                      placeholder="Ingresa tu teléfono"
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Dirección</Text>
+                    <TextInput
+                      style={styles.editInput}
+                      value={editForm.address}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, address: text }))}
+                      placeholder="Ingresa tu dirección"
+                      multiline
+                    />
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Ciudad</Text>
+                    <TextInput
+                      style={styles.editInput}
+                      value={editForm.city}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, city: text }))}
+                      placeholder="Ingresa tu ciudad"
+                    />
+                  </View>
+                  
+                  <View style={styles.editActions}>
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+                      <Ionicons name="checkmark" size={20} color="#fff" />
+                      <Text style={styles.saveButtonText}>Guardar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                      <Ionicons name="close" size={20} color="#6b7280" />
+                      <Text style={styles.cancelButtonText}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Nombre</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.full_name || user?.fullName || 'No especificado'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.email || user?.email || 'No especificado'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Teléfono</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.phone || 'No especificado'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Dirección</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.address || 'No especificada'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Ciudad</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.city || 'No especificada'}
+                    </Text>
+                  </View>
+                  
+                  {profile?.created_at && (
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>Miembro desde</Text>
+                      <Text style={styles.infoValue}>
+                        {new Date(profile.created_at).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </>
           )}
         </View>
 
         {/* Quick Stats */}
         {activeVehicle && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Estadísticas - {activeVehicle.model}</Text>
+            <Text style={styles.sectionTitle}>Estadísticas - {activeVehicle.brand} {activeVehicle.model}</Text>
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
                 <Ionicons name="speedometer" size={24} color="#3b82f6" />
@@ -278,7 +544,34 @@ const ProfileScreen = () => {
 
         {/* Logout */}
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={() => {
+              Alert.alert(
+                'Cerrar Sesión',
+                '¿Estás seguro que deseas cerrar sesión?',
+                [
+                  {
+                    text: 'Cancelar',
+                    style: 'cancel'
+                  },
+                  {
+                    text: 'Cerrar Sesión',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await logout();
+                        router.replace('/welcome');
+                      } catch (error) {
+                        console.error('Error logging out:', error);
+                        Alert.alert('Error', 'No se pudo cerrar sesión. Por favor intenta de nuevo.');
+                      }
+                    }
+                  }
+                ]
+              );
+            }}
+          >
             <Ionicons name="log-out" size={20} color="#ef4444" />
             <Text style={styles.logoutText}>Cerrar Sesión</Text>
           </TouchableOpacity>
@@ -636,6 +929,50 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     marginTop: 2,
   },
+  vehicleType: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#dc2626',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
   vehicleActions: {
     flexDirection: 'row',
     gap: 8,
@@ -695,7 +1032,129 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d1d5db',
   },
-  // ... rest of existing styles ...
+  editInput: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    marginBottom: 4,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    justifyContent: 'center',
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  editSectionButton: {
+    padding: 4,
+  },
+  infoItem: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: '400',
+  },
+  loadingContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 8,
+  },
+  errorContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    marginLeft: 8,
+  },
+  retryButton: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#22c55e',
+    borderRadius: 6,
+  },
+  retryText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  cancelButtonText: {
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
 });
 
 export default ProfileScreen;

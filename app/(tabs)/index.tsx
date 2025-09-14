@@ -1,78 +1,145 @@
 import '@/global.css';
 import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
 
 const HomeScreen = () => {
+  const { user, vehicles, activeVehicle, fetchUserProfile, fetchUserVehicles } = useAuth();
+  const [greeting, setGreeting] = useState('Buenos días');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Determinar saludo basado en la hora
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setGreeting('Buenos días');
+    } else if (hour < 18) {
+      setGreeting('Buenas tardes');
+    } else {
+      setGreeting('Buenas noches');
+    }
+
+    // Cargar datos del usuario
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchUserProfile(),
+        fetchUserVehicles()
+      ]);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular estadísticas del usuario
+  const totalVehicles = vehicles?.length || 0;
+  const documentsStatus = {
+    soat: 'Vigente', // Esto debería venir de la API
+    tecnico: 'Vigente',
+    vigentes: 3
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView style={styles.scrollView}>
+        {/* Header personalizado */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>
-              <Text style={styles.titleGreen}>Rued</Text>
-              <Text style={styles.titleBlack}>App</Text>
-            </Text>
+            <Text style={[styles.title, styles.titleGreen]}>Rued</Text>
+            <Text style={[styles.title, styles.titleBlack]}>App</Text>
           </View>
-          
-          <Text style={styles.greeting}>Buenos días</Text>
-          <Text style={styles.userName}>Gerson Pereira!</Text>
-          
-          {/* Acciones Rápidas - Categorías */}
-          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-            <TouchableOpacity style={[styles.categoryButton, styles.categoryButtonActive]}>
-              <Text style={styles.categoryTextActive}>Documentos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.categoryButton}>
-              <Text style={styles.categoryText}>Pico y Placa</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.categoryButton}>
-              <Text style={styles.categoryText}>Mantenimiento</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.categoryButton}>
-              <Text style={styles.categoryText}>Combustible</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.categoryButton}>
-              <Text style={styles.categoryText}>Recordatorios</Text>
-            </TouchableOpacity>
-          </ScrollView>
+          <Text style={styles.greeting}>{greeting}</Text>
+          <Text style={styles.userName}>
+            {loading ? 'Cargando...' : (user?.profile?.full_name || user?.fullName || user?.email || 'Usuario')}
+          </Text>
         </View>
 
-        {/* Estado General */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Estado General</Text>
-          <View style={styles.statusRow}>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusIcon, styles.statusIconGreen]}>
-                <Ionicons name="car-outline" size={24} color="#22c55e" />
+        {/* Vehículo activo */}
+        {activeVehicle && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mi Vehículo</Text>
+            <View style={styles.vehicleCard}>
+              <View style={styles.vehicleHeader}>
+                <View style={styles.vehicleIcon}>
+                  <Ionicons name="car" size={24} color="#22c55e" />
+                </View>
+                <View style={styles.vehicleInfo}>
+                  <Text style={styles.vehiclePlate}>{activeVehicle.license_plate}</Text>
+                  <Text style={styles.vehicleDetails}>
+                    {activeVehicle.brand} {activeVehicle.model} {activeVehicle.year}
+                  </Text>
+                  <Text style={styles.vehicleType}>{activeVehicle.vehicle_type.name}</Text>
+                </View>
               </View>
-              <Text style={styles.statusLabel}>SOAT</Text>
-              <Text style={styles.statusValueGreen}>Vigente</Text>
             </View>
-            
-            <View style={styles.statusItem}>
-              <View style={[styles.statusIcon, styles.statusIconGreen]}>
-                <Ionicons name="document-text-outline" size={24} color="#22c55e" />
+          </View>
+        )}
+
+        {/* Estado del vehículo */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Estado del Vehículo</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Documentos y Estado</Text>
+            <View style={styles.statusRow}>
+              <View style={styles.statusItem}>
+                <View style={[styles.statusIcon, styles.statusIconGreen]}>
+                  <Ionicons name="car-outline" size={24} color="#22c55e" />
+                </View>
+                <Text style={styles.statusLabel}>SOAT</Text>
+                <Text style={styles.statusValueGreen}>{documentsStatus.soat}</Text>
               </View>
-              <Text style={styles.statusLabel}>Técnico</Text>
-              <Text style={styles.statusValueGreen}>Vigente</Text>
+              
+              <View style={styles.statusItem}>
+                <View style={[styles.statusIcon, styles.statusIconGreen]}>
+                  <Ionicons name="document-text-outline" size={24} color="#22c55e" />
+                </View>
+                <Text style={styles.statusLabel}>Técnico</Text>
+                <Text style={styles.statusValueGreen}>{documentsStatus.tecnico}</Text>
+              </View>
+              
+              <View style={styles.statusItem}>
+                <View style={[styles.statusIcon, styles.statusIconBlue]}>
+                  <Ionicons name="calendar-outline" size={24} color="#3b82f6" />
+                </View>
+                <Text style={styles.statusLabel}>Pico y placa</Text>
+                <Text style={styles.statusValueBlue}>Libre hoy</Text>
+              </View>
+              
+              <View style={styles.statusItem}>
+                <View style={[styles.statusIcon, styles.statusIconAmber]}>
+                  <Ionicons name="speedometer-outline" size={24} color="#f59e0b" />
+                </View>
+                <Text style={styles.statusLabel}>Gasolina</Text>
+                <Text style={styles.statusValueAmber}>70%</Text>
+              </View>
             </View>
-            
-            <View style={styles.statusItem}>
-              <View style={[styles.statusIcon, styles.statusIconBlue]}>
-                <Ionicons name="calendar-outline" size={24} color="#3b82f6" />
+          </View>
+        </View>
+
+        {/* Resumen personalizado */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mi Resumen</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryNumber}>{totalVehicles}</Text>
+                <Text style={styles.summaryLabel}>Vehículos</Text>
               </View>
-              <Text style={styles.statusLabel}>Pico y placa</Text>
-              <Text style={styles.statusValueBlue}>Vigente</Text>
-            </View>
-            
-            <View style={styles.statusItem}>
-              <View style={[styles.statusIcon, styles.statusIconAmber]}>
-                <Ionicons name="speedometer-outline" size={24} color="#f59e0b" />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryNumber}>{documentsStatus.vigentes}</Text>
+                <Text style={styles.summaryLabel}>Docs. Vigentes</Text>
               </View>
-              <Text style={styles.statusLabel}>Gasolina</Text>
-              <Text style={styles.statusValueAmber}>70%</Text>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryNumber}>0</Text>
+                <Text style={styles.summaryLabel}>Multas</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -113,7 +180,7 @@ const HomeScreen = () => {
               </View>
               <Text style={styles.serviceTitle}>Documentos</Text>
               <Text style={styles.serviceSubtitle}>SOAT, Licencia y Técnico</Text>
-              <Text style={styles.serviceStatusGreen}>3 vigentes</Text>
+              <Text style={styles.serviceStatusGreen}>{documentsStatus.vigentes} vigentes</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.serviceCard}>
@@ -241,6 +308,84 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#000000',
   },
+  // Estilos para el vehículo
+  vehicleCard: {
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  vehicleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  vehicleIcon: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  vehicleInfo: {
+    flex: 1,
+  },
+  vehiclePlate: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  vehicleDetails: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  vehicleType: {
+    fontSize: 12,
+    color: '#22c55e',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  // Estilos para el resumen
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#22c55e',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  // Estilos existentes
   categoriesContainer: {
     marginBottom: 16,
   },

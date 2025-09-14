@@ -1,67 +1,115 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ServicesScreen = () => {
+  const { user, vehicles, activeVehicle, isLoading, fetchUserVehicles, setActiveVehicle } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
 
-  // Servicios principales
-  const mainServices = [
-    {
-      id: 1,
-      title: 'Cambio de Aceite',
-      description: 'Mantenimiento preventivo del motor',
-      price: 'Desde $80.000',
-      icon: 'car-outline',
-      category: 'maintenance',
-      urgent: false
-    },
-    {
-      id: 2,
-      title: 'Revisión Técnico-Mecánica',
-      description: 'Certificación obligatoria anual',
-      price: 'Desde $120.000',
-      icon: 'checkmark-circle-outline',
-      category: 'legal',
-      urgent: true
-    },
-    {
-      id: 3,
-      title: 'Alineación y Balanceo',
-      description: 'Optimiza el rendimiento de las llantas',
-      price: 'Desde $60.000',
-      icon: 'settings-outline',
-      category: 'maintenance',
-      urgent: false
-    },
-    {
-      id: 4,
-      title: 'Lavado Completo',
-      description: 'Lavado exterior e interior',
-      price: 'Desde $25.000',
-      icon: 'water-outline',
-      category: 'cleaning',
-      urgent: false
-    },
-    {
-      id: 5,
-      title: 'Grúa 24/7',
-      description: 'Servicio de emergencia',
-      price: 'Desde $150.000',
-      icon: 'construct-outline',
-      category: 'emergency',
-      urgent: true
-    },
-    {
-      id: 6,
-      title: 'Seguro Vehicular',
-      description: 'SOAT y seguros todo riesgo',
-      price: 'Cotizar',
-      icon: 'shield-checkmark-outline',
-      category: 'insurance',
-      urgent: false
+  useEffect(() => {
+    loadVehicles();
+  }, []);
+
+  const loadVehicles = async () => {
+    if (!vehicles || vehicles.length === 0) {
+      setLoadingVehicles(true);
+      try {
+        await fetchUserVehicles();
+      } catch (error) {
+        console.error('Error loading vehicles:', error);
+      } finally {
+        setLoadingVehicles(false);
+      }
     }
-  ];
+  };
+
+  // Servicios personalizados según el tipo de vehículo
+  const getPersonalizedServices = () => {
+    const baseServices = [
+      {
+        id: 1,
+        title: 'Cambio de Aceite',
+        description: activeVehicle ? `Mantenimiento para ${activeVehicle.vehicle_type.name}` : 'Mantenimiento preventivo del motor',
+        price: activeVehicle?.vehicle_type.name === 'Motocicleta' ? 'Desde $40.000' : 'Desde $80.000',
+        icon: 'car-outline',
+        category: 'maintenance',
+        urgent: false,
+        vehicleTypes: ['all']
+      },
+      {
+        id: 2,
+        title: 'Revisión Técnico-Mecánica',
+        description: 'Certificación obligatoria anual',
+        price: activeVehicle?.vehicle_type.name === 'Motocicleta' ? 'Desde $80.000' : 'Desde $120.000',
+        icon: 'checkmark-circle-outline',
+        category: 'legal',
+        urgent: true,
+        vehicleTypes: ['all']
+      },
+      {
+        id: 3,
+        title: 'Alineación y Balanceo',
+        description: 'Optimiza el rendimiento de las llantas',
+        price: 'Desde $60.000',
+        icon: 'settings-outline',
+        category: 'maintenance',
+        urgent: false,
+        vehicleTypes: ['Automóvil', 'Camioneta']
+      },
+      {
+        id: 4,
+        title: 'Lavado Completo',
+        description: activeVehicle ? `Lavado especializado para ${activeVehicle.vehicle_type.name}` : 'Lavado exterior e interior',
+        price: activeVehicle?.vehicle_type.name === 'Motocicleta' ? 'Desde $15.000' : 'Desde $25.000',
+        icon: 'water-outline',
+        category: 'cleaning',
+        urgent: false,
+        vehicleTypes: ['all']
+      },
+      {
+        id: 5,
+        title: 'Grúa 24/7',
+        description: 'Servicio de emergencia',
+        price: 'Desde $150.000',
+        icon: 'construct-outline',
+        category: 'emergency',
+        urgent: true,
+        vehicleTypes: ['all']
+      },
+      {
+        id: 6,
+        title: 'Seguro Vehicular',
+        description: 'SOAT y seguros todo riesgo',
+        price: 'Cotizar',
+        icon: 'shield-checkmark-outline',
+        category: 'insurance',
+        urgent: false,
+        vehicleTypes: ['all']
+      },
+      {
+        id: 7,
+        title: 'Mantenimiento de Cadena',
+        description: 'Limpieza y lubricación de cadena',
+        price: 'Desde $25.000',
+        icon: 'link-outline',
+        category: 'maintenance',
+        urgent: false,
+        vehicleTypes: ['Motocicleta']
+      }
+    ];
+
+    // Filtrar servicios según el tipo de vehículo activo
+    if (activeVehicle) {
+      return baseServices.filter(service => 
+        service.vehicleTypes.includes('all') || 
+        service.vehicleTypes.includes(activeVehicle.vehicle_type.name)
+      );
+    }
+    
+    return baseServices.filter(service => service.vehicleTypes.includes('all'));
+  };
 
   // Categorías de servicios
   const categories = [
@@ -73,7 +121,6 @@ const ServicesScreen = () => {
     { id: 'insurance', name: 'Seguros', icon: 'shield-outline' }
   ];
 
-  // Servicios de emergencia
   const emergencyServices = [
     {
       title: 'Mecánico a Domicilio',
@@ -95,19 +142,41 @@ const ServicesScreen = () => {
     }
   ];
 
+  const personalizedServices = getPersonalizedServices();
   const filteredServices = selectedCategory === 'all' 
-    ? mainServices 
-    : mainServices.filter(service => service.category === selectedCategory);
+    ? personalizedServices 
+    : personalizedServices.filter(service => service.category === selectedCategory);
 
   const handleServicePress = (service: any) => {
+    const vehicleInfo = activeVehicle ? `\n\nVehículo: ${activeVehicle.brand} ${activeVehicle.model} (${activeVehicle.license_plate})` : '';
     Alert.alert(
       service.title,
-      `¿Deseas solicitar el servicio de ${service.title}?\n\nPrecio: ${service.price}\nDescripción: ${service.description}`,
+      `¿Deseas solicitar el servicio de ${service.title}?${vehicleInfo}\n\nPrecio: ${service.price}\nDescripción: ${service.description}`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Solicitar', onPress: () => Alert.alert('Servicio Solicitado', 'Te contactaremos pronto') }
       ]
     );
+  };
+
+  const handleVehicleChange = () => {
+    if (vehicles && vehicles.length > 1) {
+      const vehicleOptions = vehicles.map((vehicle) => ({
+        text: `${vehicle.brand} ${vehicle.model} (${vehicle.license_plate})`,
+        onPress: () => setActiveVehicle(vehicle)
+      }));
+      
+      Alert.alert(
+        'Seleccionar Vehículo',
+        'Elige el vehículo para el cual deseas ver los servicios:',
+        [
+          ...vehicleOptions,
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+    } else {
+      Alert.alert('Sin vehículos', 'No tienes vehículos registrados o solo tienes uno.');
+    }
   };
 
   const handleEmergencyCall = (phone: string, service: string) => {
@@ -129,6 +198,15 @@ const ServicesScreen = () => {
     Alert.alert('Agendar Cita', 'Función para agendar servicios');
   };
 
+  if (isLoading || loadingVehicles) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Cargando servicios...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -137,6 +215,31 @@ const ServicesScreen = () => {
           <Text style={styles.title}>Servicios</Text>
           <Text style={styles.subtitle}>Mantenimiento y asistencia vehicular</Text>
         </View>
+
+        {/* Vehículo Activo */}
+        {activeVehicle && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vehículo Seleccionado</Text>
+            <TouchableOpacity style={styles.activeVehicleCard} onPress={handleVehicleChange}>
+              <View style={styles.vehicleIcon}>
+                <Ionicons 
+                  name={activeVehicle.vehicle_type.name === 'Motocicleta' ? 'bicycle-outline' : 'car-outline'} 
+                  size={24} 
+                  color="#3b82f6" 
+                />
+              </View>
+              <View style={styles.vehicleInfo}>
+                <Text style={styles.vehicleTitle}>
+                  {activeVehicle.brand} {activeVehicle.model}
+                </Text>
+                <Text style={styles.vehicleSubtitle}>
+                  {activeVehicle.license_plate} • {activeVehicle.vehicle_type.name}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down-outline" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Acciones Rápidas */}
         <View style={styles.section}>
@@ -184,7 +287,9 @@ const ServicesScreen = () => {
 
         {/* Servicios Principales */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
+          <Text style={styles.sectionTitle}>
+            Servicios Disponibles {activeVehicle && `para ${activeVehicle.vehicle_type.name}`}
+          </Text>
           {filteredServices.map((service) => (
             <TouchableOpacity
               key={service.id}
@@ -253,17 +358,20 @@ const ServicesScreen = () => {
           </View>
         </View>
 
-        {/* Consejos */}
+        {/* Consejos personalizados */}
         <View style={styles.section}>
           <View style={styles.tipsCard}>
             <Ionicons name="bulb-outline" size={24} color="#f59e0b" />
             <View style={styles.tipsContent}>
-              <Text style={styles.tipsTitle}>Consejos de Mantenimiento</Text>
+              <Text style={styles.tipsTitle}>
+                Consejos de Mantenimiento {activeVehicle && `para ${activeVehicle.vehicle_type.name}`}
+              </Text>
               <Text style={styles.tipsText}>
-                • Cambia el aceite cada 5,000-10,000 km{"\n"}
-                • Revisa la presión de llantas mensualmente{"\n"}
-                • Programa la revisión técnico-mecánica con anticipación{"\n"}
-                • Mantén al día los documentos del vehículo
+                {activeVehicle?.vehicle_type.name === 'Motocicleta' ? (
+                  "• Cambia el aceite cada 3,000-5,000 km\n• Revisa la tensión de la cadena semanalmente\n• Verifica la presión de llantas antes de cada viaje\n• Mantén al día la revisión técnico-mecánica"
+                ) : (
+                  "• Cambia el aceite cada 5,000-10,000 km\n• Revisa la presión de llantas mensualmente\n• Programa la revisión técnico-mecánica con anticipación\n• Mantén al día los documentos del vehículo"
+                )}
               </Text>
             </View>
           </View>
@@ -525,6 +633,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#92400e',
     lineHeight: 20,
+  },
+  // Estilos faltantes:
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  activeVehicleCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  vehicleIcon: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#eff6ff',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  vehicleInfo: {
+    flex: 1,
+  },
+  vehicleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  vehicleSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 });
 
