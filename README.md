@@ -1,54 +1,76 @@
-<<<<<<< HEAD
-# Welcome to your Expo app 👋
+# Gestión Vehicular App 🚗📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil multiplataforma para la gestión integral de vehículos: mantenimientos, SOAT, revisión técnico mecánica, Pico y Placa, asistencias en carretera (emergencias, grúas, mecánicos, etc.). Proyecto personal enfocado en el aprendizaje y la experimentación con tecnologías móviles modernas.
 
-## Get started
+---
 
-1. Install dependencies
+## ✨ Funcionalidades Principales
 
-   ```bash
-   npm install
-   ```
+- Registro y gestión de vehículos propios.
+- Alertas y recordatorios de vencimientos: SOAT, revisión técnico mecánica, seguros y mantenimientos periódicos.
+- Control detallado de gastos y mantenimientos realizados.
+- Información y calendario de Pico y Placa según ciudad.
+- Integración con servicios de asistencia para emergencias, grúas y mecánicos.
+- Interfaz amigable y diseño adaptativo para móviles Android e iOS.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 🛠️ Stack Tecnológico
 
-In the output, you'll find options to open the app in a
+- **Front-end:** React Native + Expo
+- **Diseño UI/UX:** Figma
+- **Back-end:** FastAPI (Python)
+- **Base de datos:** (añade la que uses, ejemplo SQLite, PostgreSQL, etc.)
+- **Otras librerías:** (añade aquí librerías relevantes)
+- **Plataformas soportadas:** Android e iOS
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🚀 Instalación y Ejecución
 
-## Get a fresh project
+1. Clona el repositorio:
+    ```
+    git clone https://github.com/tu_usuario/gestion-vehicular-app.git
+    cd gestion-vehicular-app
+    ```
 
-When you're ready, run:
+2. Instala las dependencias:
+    ```
+    npm install
+    # o si usas yarn
+    yarn
+    ```
 
-```bash
-npm run reset-project
-```
+3. Inicia la aplicación en modo desarrollo:
+    ```
+    npx expo start
+    ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+4. Sigue las instrucciones en consola para abrir la app en emulador o dispositivo físico con Expo Go.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 📝 Roadmap y Próximos Pasos
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- [ ] Integración de nuevos proveedores de asistencia.
+- [ ] Implementación de autenticación y perfiles de usuario.
+- [ ] Sincronización en la nube para respaldo de datos.
+- [ ] Mejoras en experiencia de usuario y UI/UX.
+- [ ] Publicación en Google Play Store y App Store.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🤝 Contribuciones
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-=======
-# ruedapp-mobile
->>>>>>> 18bfdd63d399dd4b90523375a997d9bc26b8406d
+Las contribuciones son bienvenidas. Por favor, revisa las [guidelines para contribuir](CONTRIBUTING.md) y abre un Issue o Pull Request para aportar mejoras o sugerencias.
+
+---
+
+## ℹ️ Sobre el Autor
+
+Desarrollada por Gerson Pereira  
+Desarrollador Full Stack | QA Automation | Apasionado por el aprendizaje y la solución de problemas reales.
+
+[LinkedIn](https://www.linkedin.com/in/gerson-urrea-pereira/) | [Email](mailto:contacto@pereiradev.com)
+
+---
