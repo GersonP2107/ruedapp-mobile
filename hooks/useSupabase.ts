@@ -522,3 +522,70 @@ export const useProfile = () => {
     updateProfile
   };
 };
+
+// Hook para gestionar reseñas (funcionalidad básica)
+export const useReviews = () => {
+  const { supabaseUser } = useAuth();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProviderReviews = async (providerId: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // TODO: Implementar cuando se cree la tabla de reviews
+      console.log('Fetching reviews for provider:', providerId);
+      setReviews([]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserReviews = async () => {
+    if (!supabaseUser) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // TODO: Implementar cuando se cree la tabla de reviews
+      console.log('Fetching user reviews');
+      setReviews([]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createReview = async (reviewData: any) => {
+    if (!supabaseUser) return { success: false, error: 'Usuario no autenticado' };
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // TODO: Implementar cuando se cree la tabla de reviews
+      console.log('Creating review:', reviewData);
+      return { success: true, data: null };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    reviews,
+    loading,
+    error,
+    fetchProviderReviews,
+    fetchUserReviews,
+    createReview
+  };
+};

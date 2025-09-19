@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useProfile, useVehicles } from '../../hooks/useSupabase';
 
@@ -1092,51 +1092,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
     fontWeight: '400',
-  },
-  loadingContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  errorContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    marginLeft: 8,
-  },
-  retryButton: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#22c55e',
-    borderRadius: 6,
   },
   retryText: {
     color: '#ffffff',

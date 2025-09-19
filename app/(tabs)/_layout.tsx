@@ -31,8 +31,12 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size || 24} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? "home" : "home-outline"} 
+              size={size || 24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -41,8 +45,12 @@ export default function TabLayout() {
         name="documents"
         options={{
           title: 'Documentos',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size || 24} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? "document-text" : "document-text-outline"} 
+              size={size || 24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -51,8 +59,12 @@ export default function TabLayout() {
         name="pico-placa"
         options={{
           title: 'Pico y Placa',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size || 24} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? "calendar" : "calendar-outline"} 
+              size={size || 24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -61,8 +73,12 @@ export default function TabLayout() {
         name="services"
         options={{
           title: 'Servicios',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="construct-outline" size={size || 24} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? "construct" : "construct-outline"} 
+              size={size || 24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -71,8 +87,12 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size || 24} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? "person" : "person-outline"} 
+              size={size || 24} 
+              color={color} 
+            />
           ),
         }}
       />

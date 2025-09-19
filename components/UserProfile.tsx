@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useUserProfile } from '../hooks/useSupabase';
+import { useProfile } from '../hooks/useSupabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UserProfileProps {
@@ -22,7 +22,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
   editable = true,
   onSave,
 }) => {
-  const { profile, loading, error, fetchProfile, updateProfile } = useUserProfile();
+  const { profile, loading, error, fetchProfile, updateProfile } = useProfile();
   const { supabaseUser, signOutFromSupabase } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({

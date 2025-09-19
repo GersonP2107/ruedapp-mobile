@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  TextInput,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInputProps,
   Animated,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
 
-interface ValidatedInputProps extends TextInputProps {
+interface ValidatedInputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
   error?: string;
   isValid?: boolean;
@@ -26,6 +27,7 @@ interface ValidatedInputProps extends TextInputProps {
   strengthScore?: number;
   strengthLabel?: string;
   strengthColor?: string;
+  style?: ViewStyle; // Cambiar de StyleProp<TextStyle> a ViewStyle
 }
 
 export default function ValidatedInput({
@@ -50,7 +52,8 @@ export default function ValidatedInput({
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>(undefined);
-  const [validationTimeout, setValidationTimeout] = useState<NodeJS.Timeout | null>(null);
+  // Corregir el tipo del timeout
+  const [validationTimeout, setValidationTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   
   const borderColorAnim = new Animated.Value(0);
   const errorOpacityAnim = new Animated.Value(0);
@@ -91,7 +94,7 @@ export default function ValidatedInput({
         return;
       }
 
-      // Validación con delay para otros casos
+      // Validación con delay para otros casos - Corregir el tipo
       const timeout = setTimeout(() => {
         const validation = validator(text);
         setLocalError(validation.isValid ? undefined : validation.message);
@@ -148,7 +151,7 @@ export default function ValidatedInput({
         style={[
           styles.inputContainer,
           { borderColor: getBorderColor() },
-          style,
+          style, // Ahora es compatible con ViewStyle
         ]}
       >
         {leftIcon && (
@@ -177,7 +180,7 @@ export default function ValidatedInput({
           accessibilityHint={currentError ? `Error: ${currentError}` : undefined}
           accessibilityState={{
             disabled: props.editable === false,
-            invalid: hasError,
+            // Remover 'invalid' ya que no es una propiedad válida
           }}
         />
         

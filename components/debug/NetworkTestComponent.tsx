@@ -1,12 +1,12 @@
+import { useAuth } from '@/contexts/AuthContext';
+import { useVehicles } from '@/hooks/useSupabase';
 import React from 'react';
 import {
-  View,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
+  View,
 } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 
 export const NetworkTestComponent: React.FC = () => {
   const {
@@ -14,9 +14,9 @@ export const NetworkTestComponent: React.FC = () => {
     showNetworkError,
     showNetworkWarning,
     showNetworkInfo,
-    fetchUserProfile,
-    fetchUserVehicles,
   } = useAuth();
+  
+  const { vehicles, fetchVehicles } = useVehicles();
 
   const testNetworkError = () => {
     showNetworkError('Error de conexión simulado para pruebas');
@@ -32,7 +32,8 @@ export const NetworkTestComponent: React.FC = () => {
 
   const testApiCall = async () => {
     try {
-      await fetchUserProfile();
+      // Los datos del perfil ya están disponibles en user desde AuthContext
+      console.log('Profile data available from AuthContext');
       showNetworkInfo('Llamada a API exitosa');
     } catch (error) {
       showNetworkError('Error en llamada a API');
@@ -41,7 +42,7 @@ export const NetworkTestComponent: React.FC = () => {
 
   const testVehiclesCall = async () => {
     try {
-      await fetchUserVehicles();
+      await fetchVehicles();
       showNetworkInfo('Carga de vehículos exitosa');
     } catch (error) {
       showNetworkError('Error cargando vehículos');
@@ -53,11 +54,7 @@ export const NetworkTestComponent: React.FC = () => {
       <Text style={styles.title}>Pruebas de Conectividad</Text>
       
       <View style={styles.statusContainer}>
-        <Ionicons 
-          name={isConnected ? 'wifi' : 'wifi-off'} 
-          size={20} 
-          color={isConnected ? '#10b981' : '#ef4444'} 
-        />
+        
         <Text style={[styles.statusText, { color: isConnected ? '#10b981' : '#ef4444' }]}>
           {isConnected ? 'Conectado' : 'Sin conexión'}
         </Text>

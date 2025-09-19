@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
@@ -38,7 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
-=======
 # Logs
 logs
 *.log
@@ -178,4 +176,3 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
->>>>>>> 18bfdd63d399dd4b90523375a997d9bc26b8406d

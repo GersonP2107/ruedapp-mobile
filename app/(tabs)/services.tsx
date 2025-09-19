@@ -1,10 +1,12 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useContext, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useVehicles } from '@/hooks/useSupabase';
 
 const ServicesScreen = () => {
-  const { user, vehicles, activeVehicle, isLoading, fetchUserVehicles, setActiveVehicle } = useAuth();
+  const { user, activeVehicle, isLoading, setActiveVehicle } = useAuth();
+  const { vehicles, fetchVehicles } = useVehicles();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loadingVehicles, setLoadingVehicles] = useState(false);
 
@@ -16,7 +18,7 @@ const ServicesScreen = () => {
     if (!vehicles || vehicles.length === 0) {
       setLoadingVehicles(true);
       try {
-        await fetchUserVehicles();
+        await fetchVehicles();
       } catch (error) {
         console.error('Error loading vehicles:', error);
       } finally {

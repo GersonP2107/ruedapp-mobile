@@ -1,13 +1,34 @@
-import '@/global.css';
-import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from '@/contexts/AuthContext';
+import '@/global.css';
+import { useVehicles } from '@/hooks/useSupabase';
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+// Interfaz para las actividades
+interface ActivityItem {
+  id: string;
+  type: 'trip' | 'payment' | 'rating' | 'document' | 'maintenance' | 'notification';
+  title: string;
+  subtitle: string;
+  timestamp: Date;
+  icon: string;
+  iconColor: string;
+  backgroundColor: string;
+  metadata?: {
+    amount?: number;
+    rating?: number;
+    distance?: number;
+    location?: string;
+  };
+}
 
 const HomeScreen = () => {
-  const { user, vehicles, activeVehicle, fetchUserProfile, fetchUserVehicles } = useAuth();
+  const { user, activeVehicle } = useAuth();
+  const { vehicles, fetchVehicles } = useVehicles();
   const [greeting, setGreeting] = useState('Buenos días');
   const [loading, setLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     // Determinar saludo basado en la hora
@@ -22,19 +43,84 @@ const HomeScreen = () => {
 
     // Cargar datos del usuario
     loadUserData();
+    loadRecentActivities();
   }, []);
 
   const loadUserData = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchUserProfile(),
-        fetchUserVehicles()
-      ]);
+      // Los datos del perfil ya están disponibles en user desde AuthContext
+      await fetchVehicles();
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRecentActivities = async () => {
+    try {
+      // Aquí conectarías con tu API para obtener actividades reales
+      const activities: ActivityItem[] = [
+        {
+          id: '1',
+          type: 'trip',
+          title: 'Viaje completado',
+          subtitle: 'Centro → Zona Norte (12.5 km)',
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          icon: 'car-outline',
+          iconColor: '#22c55e',
+          backgroundColor: '#f0fdf4',
+          metadata: { distance: 12.5, amount: 15000 }
+        },
+        {
+          id: '2',
+          type: 'payment',
+          title: 'Pago realizado',
+          subtitle: 'Renovación SOAT - $85.000',
+          timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          icon: 'card-outline',
+          iconColor: '#3b82f6',
+          backgroundColor: '#eff6ff',
+          metadata: { amount: 85000 }
+        },
+        {
+          id: '3',
+          type: 'rating',
+          title: 'Calificación recibida',
+          subtitle: '⭐⭐⭐⭐⭐ "Excelente servicio"',
+          timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          icon: 'star-outline',
+          iconColor: '#f59e0b',
+          backgroundColor: '#fffbeb',
+          metadata: { rating: 5 }
+        },
+        {
+          id: '4',
+          type: 'maintenance',
+          title: 'Mantenimiento programado',
+          subtitle: 'Cambio de aceite en 500 km',
+          timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          icon: 'construct-outline',
+          iconColor: '#6366f1',
+          backgroundColor: '#e0e7ff'
+        }
+      ];
+      setRecentActivities(activities);
+    } catch (error) {
+      console.error('Error loading recent activities:', error);
+    }
+  };
+
+  const formatTimeAgo = (timestamp: Date) => {
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return `Hace ${diffInHours}h`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `Hace ${diffInDays} día${diffInDays > 1 ? 's' : ''}`;
     }
   };
 
@@ -229,35 +315,50 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* Actividad Reciente */}
+        {/* Actividad Reciente Mejorada */}
         <View style={styles.sectionLast}>
-          <Text style={styles.sectionTitle}>Actividad Reciente</Text>
-          
-          <View style={styles.activityCard}>
-            <View style={styles.activityRow}>
-              <View style={[styles.activityIcon, styles.activityIconAmber]}>
-                <Ionicons name="speedometer-outline" size={20} color="#f59e0b" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Tanqueada registrada</Text>
-                <Text style={styles.activitySubtitle}>Hace 2 días</Text>
-              </View>
-              <Text style={styles.activityTime}>14:30</Text>
-            </View>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Actividad Reciente</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>Ver todo</Text>
+              <Ionicons name="chevron-forward" size={16} color="#22c55e" />
+            </TouchableOpacity>
           </View>
           
-          <View style={styles.activityCard}>
-            <View style={styles.activityRow}>
-              <View style={[styles.activityIcon, styles.activityIconIndigo]}>
-                <Ionicons name="document-text-outline" size={20} color="#6366f1" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Documento renovado</Text>
-                <Text style={styles.activitySubtitle}>Hace 5 días</Text>
-              </View>
-              <Text style={styles.activityTime}>12:50</Text>
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity) => (
+              <TouchableOpacity key={activity.id} style={styles.activityCard}>
+                <View style={styles.activityRow}>
+                  <View style={[styles.activityIcon, { backgroundColor: activity.backgroundColor }]}>
+                    <Ionicons name={activity.icon as any} size={20} color={activity.iconColor} />
+                  </View>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+                    <Text style={styles.activitySubtitle}>{activity.subtitle}</Text>
+                    {activity.metadata?.amount && (
+                      <Text style={styles.activityAmount}>
+                        ${activity.metadata.amount.toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.activityTimeContainer}>
+                    <Text style={styles.activityTime}>{formatTimeAgo(activity.timestamp)}</Text>
+                    {activity.type === 'trip' && activity.metadata?.distance && (
+                      <Text style={styles.activityDistance}>{activity.metadata.distance} km</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Ionicons name="time-outline" size={48} color="#9ca3af" />
+              <Text style={styles.emptyStateTitle}>No hay actividad reciente</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                Tus actividades aparecerán aquí cuando comiences a usar la app
+              </Text>
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -282,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
   },
   titleGreen: {
@@ -307,6 +408,22 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 12,
     color: '#000000',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#22c55e',
+    fontWeight: '500',
+    marginRight: 4,
   },
   // Estilos para el vehículo
   vehicleCard: {
@@ -416,9 +533,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   card: {
-    marginHorizontal: 24,
     backgroundColor: '#ffffff',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
@@ -491,6 +607,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#f59e0b',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   warningHeader: {
     flexDirection: 'row',
@@ -664,6 +788,47 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 12,
     color: '#6b7280',
+  },
+  activityTimeContainer: {
+    alignItems: 'flex-end',
+  },
+  activityAmount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#22c55e',
+    marginTop: 2,
+  },
+  activityDistance: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  emptyStateCard: {
+    backgroundColor: '#ffffff',
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 20,
   },
   bottomNav: {
     flexDirection: 'row',
