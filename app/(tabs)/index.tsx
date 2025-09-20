@@ -3,7 +3,7 @@ import '@/global.css';
 import { useVehicles } from '@/hooks/useSupabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Interfaz para las actividades
 interface ActivityItem {
@@ -138,7 +138,8 @@ const HomeScreen = () => {
         {/* Header personalizado */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <Text style={[styles.title, styles.titleGreen]}>Rued</Text>
+            <Image source={require('@/assets/images/logo-ruedapp.png')} style={{ width: 25, height: 25}}/>
+            <Text style={[styles.title, styles.titleGreen]}> Rued</Text>
             <Text style={[styles.title, styles.titleBlack]}>App</Text>
           </View>
           <Text style={styles.greeting}>{greeting}</Text>
@@ -381,6 +382,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: 8,
   },
   title: {
     fontSize: 30,
@@ -394,7 +396,7 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: '#6b7280',
-    marginTop: 24,
+    marginTop: 16,
     fontSize: 16,
   },
   userName: {
@@ -595,7 +597,7 @@ const styles = StyleSheet.create({
     color: '#f59e0b',
   },
   section: {
-    marginHorizontal: 24,
+    marginHorizontal: 20,
   },
   sectionLast: {
     marginHorizontal: 24,
