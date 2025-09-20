@@ -1,27 +1,21 @@
-import { useEffect } from 'react';
-import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { Redirect } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '../src/infrastructure/context/AuthContext';
 
-export default function IndexScreen() {
+export default function Index() {
   const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        // Usuario autenticado, ir a tabs
-        router.replace('/(tabs)');
-      } else {
-        // Usuario no autenticado, ir a welcome
-        router.replace('/welcome');
-      }
-    }
-  }, [user, isLoading]);
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
+  }
 
-  // Mostrar loading mientras se verifica la autenticación
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" color="#3b82f6" />
-    </View>
-  );
+  if (user) {
+    return <Redirect href={"/(tabs)" as any} />;
+  }
+
+  return <Redirect href="/welcome" />;
 }

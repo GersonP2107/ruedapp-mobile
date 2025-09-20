@@ -10,6 +10,18 @@ interface DistanceRequest {
   limit?: number;
 }
 
+interface ProviderService {
+  service_id: string;
+  price: number;
+  estimated_duration: number;
+  services: {
+    id: string;
+    name: string;
+    description: string;
+    vehicle_type_id: string;
+  };
+}
+
 interface Provider {
   id: string;
   business_name: string;
@@ -17,6 +29,8 @@ interface Provider {
   longitude: number;
   rating: number;
   total_reviews: number;
+  is_active: boolean;
+  provider_services: ProviderService[];
   services: any[];
   distance_km?: number;
 }
@@ -52,7 +66,7 @@ function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -153,8 +167,8 @@ serve(async (req) => {
     }
 
     // Calculate distances and filter by radius
-    const providersWithDistance: Provider[] = providers
-      .map(provider => {
+    const providersWithDistance: Provider[] = (providers as Provider[])
+      .map((provider: Provider) => {
         const distance = calculateDistance(
           user_lat,
           user_lng,
@@ -165,15 +179,15 @@ serve(async (req) => {
         return {
           ...provider,
           distance_km: distance,
-          services: provider.provider_services.map((ps: any) => ({
+          services: provider.provider_services.map((ps: ProviderService) => ({
             ...ps.services,
             price: ps.price,
             estimated_duration: ps.estimated_duration
           }))
         };
       })
-      .filter(provider => provider.distance_km! <= radius_km)
-      .sort((a, b) => a.distance_km! - b.distance_km!) // Sort by distance
+      .filter((provider: Provider) => provider.distance_km! <= radius_km)
+      .sort((a: Provider, b: Provider) => a.distance_km! - b.distance_km!) // Sort by distance
       .slice(0, limit); // Limit results
 
     // Calculate some statistics
@@ -194,7 +208,7 @@ serve(async (req) => {
     };
 
     // Clean up the response data
-    const cleanProviders = providersWithDistance.map(provider => {
+    const cleanProviders = providersWithDistance.map((provider: Provider) => {
       const { provider_services, ...cleanProvider } = provider;
       return cleanProvider;
     });
