@@ -3,7 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../src/infrastructure/context/AuthContext';
 
 export default function Index() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, vehicles } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,6 +14,11 @@ export default function Index() {
   }
 
   if (user) {
+    // Si el usuario está autenticado pero no tiene vehículos, redirigir a registro de vehículo
+    if (vehicles.length === 0) {
+      return <Redirect href="/vehicle-registration" />;
+    }
+    // Si tiene vehículos, redirigir a la app principal
     return <Redirect href={"/(tabs)" as any} />;
   }
 

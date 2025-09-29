@@ -9,6 +9,7 @@ export interface FormErrors {
   email?: string;
   password?: string;
   fullName?: string;
+  confirmPassword?: string;
   general?: string;
 }
 

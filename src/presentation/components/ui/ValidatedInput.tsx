@@ -64,8 +64,17 @@ export default function ValidatedInput({
 
   useEffect(() => {
     // Animar color del borde
+    // Prioridad: Error > Enfocado > Normal
+    let targetValue = 0; // Normal (gris)
+    
+    if (hasError) {
+      targetValue = 2; // Error (rojo)
+    } else if (isFocused) {
+      targetValue = 1; // Enfocado (verde) - se mantiene mientras esté enfocado
+    }
+    
     Animated.timing(borderColorAnim, {
-      toValue: hasError ? 2 : isFocused ? 1 : 0,
+      toValue: targetValue,
       duration: 200,
       useNativeDriver: false,
     }).start();
@@ -76,7 +85,7 @@ export default function ValidatedInput({
       duration: 200,
       useNativeDriver: false,
     }).start();
-  }, [hasError, isFocused]);
+  }, [hasError, isFocused]); // Mantener las mismas dependencias
 
   const handleChangeText = (text: string) => {
     props.onChangeText?.(text);
@@ -129,14 +138,14 @@ export default function ValidatedInput({
   const getBorderColor = () => {
     return borderColorAnim.interpolate({
       inputRange: [0, 1, 2],
-      outputRange: ['rgba(255, 255, 255, 0.3)', '#22c55e', '#ef4444'],
+      outputRange: ['#e5e7eb', '#44F1A6', '#ef4444'], // Usar el color principal #44F1A6
     });
   };
 
   const getIconColor = () => {
     if (hasError) return '#ef4444';
-    if (isFocused) return '#22c55e';
-    return '#9ca3af';
+    if (isFocused) return '#44F1A6'; // Usar el color principal #44F1A6
+    return '#6b7280'; // Gris más oscuro para mejor contraste
   };
 
   return (
@@ -218,7 +227,7 @@ export default function ValidatedInput({
         
         {isValidInput && !hasError && showValidation && props.value && (
           <View style={styles.validIcon}>
-            <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+            <Ionicons name="checkmark-circle" size={20} color="#44F1A6" />
           </View>
         )}
       </Animated.View>
@@ -271,8 +280,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#ffffff',
+    fontWeight: '600',
+    color: '#374151', // Cambiar de blanco a gris oscuro
     marginBottom: 8,
   },
   labelError: {
@@ -281,17 +290,25 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: '#f9fafb', // Fondo gris muy claro en lugar de blanco transparente
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#e5e7eb', // Borde gris claro visible
     paddingHorizontal: 16,
     minHeight: 52,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#374151',
+    color: '#111827', // Texto más oscuro para mejor contraste
     paddingVertical: 16,
   },
   inputWithLeftIcon: {

@@ -186,7 +186,7 @@ const ProfileScreen: React.FC = () => {
           onPress: async () => {
             try {
               await logout();
-              router.replace('/(auth)/welcome' as any);
+              router.replace('/welcome' as any);
             } catch (error) {
               console.error('Error logging out:', error);
               Alert.alert('Error', 'No se pudo cerrar sesión. Por favor intenta de nuevo.');
