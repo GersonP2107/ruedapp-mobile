@@ -1,11 +1,11 @@
-import { useAuth } from '../../../infrastructure/context/AuthContext';
+import { handleAuthError, logError } from '@/utils/errorHandling';
+import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,14 +16,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ValidatedInput, ForgotPasswordModal } from '../../components';
-import { validateLoginForm, validateEmail, hasFormErrors, FormErrors } from '@/utils/validation';
-import { handleAuthError, logError } from '@/utils/errorHandling';
+import { useAuth } from '../../../infrastructure/context/AuthContext';
+import { ForgotPasswordModal, LoadingScreen, ValidatedInput } from '../../components';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -54,7 +54,9 @@ export default function LoginScreen() {
         const errorResponse = handleAuthError(error);
         Alert.alert(errorResponse.title, errorResponse.message);
       } else {
-        // La navegación se maneja automáticamente en el AuthContext
+        // Mostrar pantalla de carga antes de la redirección
+        setIsLoading(false);
+        setShowLoading(true);
         console.log('Login exitoso con Supabase');
       }
     } catch (error) {
@@ -87,7 +89,9 @@ export default function LoginScreen() {
     try {
       const success = await login(email.trim(), password);
       if (success) {
-        // La navegación se maneja automáticamente en el AuthContext
+        // Mostrar pantalla de carga antes de la redirección
+        setIsLoading(false);
+        setShowLoading(true);
         console.log('Login exitoso con sistema anterior');
       } else {
         // El error específico se maneja en el AuthContext
@@ -124,126 +128,138 @@ export default function LoginScreen() {
     }
   };
 
+  const handleLoadingComplete = () => {
+    setShowLoading(false);
+    // La navegación se maneja automáticamente en el AuthContext
+  };
+
   const isFormValid = isEmailValid && password.length > 0 && !hasFormErrors(errors);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <ImageBackground
-        source={require('../../../../assets/images/react-logo.png')}
-        style={styles.backgroundImage}
-        blurRadius={3}
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
+      {showLoading && (
+        <LoadingScreen
+          title="¡BIENVENIDO!"
+          subtitle="Accediendo a tu cuenta..."
+          duration={2500}
+          onComplete={handleLoadingComplete}
+        />
+      )}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-              {/* Header */}
-              <View style={styles.header}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#000000" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.content}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoCircle}>
+                <Ionicons name="car-sport" size={32} color="#ffffff" />
+              </View>
+            </View>
+
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Iniciar sesión</Text>
+              <Text style={styles.subtitle}>
+                Bienvenido de vuelta a RuedApp
+              </Text>
+            </View>
+
+            {/* Form */}
+            <View style={styles.form}>
+              <ValidatedInput
+                label="Correo electrónico"
+                placeholder="Ingresa tu correo electrónico"
+                value={email}
+                onChangeText={handleEmailChange}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!isLoading}
+                leftIcon="mail-outline"
+                error={errors.email}
+                validator={validateEmail}
+                onValidationChange={setIsEmailValid}
+                showValidation={hasAttemptedSubmit}
+              />
+
+              <ValidatedInput
+                label="Contraseña"
+                placeholder="Ingresa tu contraseña"
+                value={password}
+                onChangeText={handlePasswordChange}
+                editable={!isLoading}
+                leftIcon="lock-closed-outline"
+                showPasswordToggle
+                error={errors.password}
+                showValidation={hasAttemptedSubmit}
+              />
+
+              <TouchableOpacity 
+                style={styles.forgotPassword}
+                onPress={() => setShowForgotPasswordModal(true)}
+                accessible={true}
+                accessibilityLabel="¿Olvidaste tu contraseña?"
+                accessibilityRole="button"
+                accessibilityHint="Abre el formulario para recuperar tu contraseña"
+              >
+                <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.loginButton,
+                  (isLoading || (!isFormValid && hasAttemptedSubmit)) && styles.loginButtonDisabled
+                ]}
+                onPress={handleSupabaseLogin}
+                disabled={isLoading || (!isFormValid && hasAttemptedSubmit)}
+                accessible={true}
+                accessibilityLabel="Iniciar sesión"
+                accessibilityRole="button"
+                accessibilityState={{
+                  disabled: isLoading || (!isFormValid && hasAttemptedSubmit),
+                  busy: isLoading
+                }}
+              >
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator color="#ffffff" size="small" />
+                    <Text style={styles.loadingText}>Iniciando sesión...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.loginButtonText}>Iniciar sesión</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.signUpContainer}>
+                <Text style={styles.signUpText}>¿No tienes cuenta? </Text>
                 <TouchableOpacity 
-                  style={styles.backButton}
-                  onPress={() => router.back()}
+                  onPress={() => router.push('/signup')} 
+                  disabled={isLoading}
+                  accessible={true}
+                  accessibilityLabel="Crear nueva cuenta"
+                  accessibilityRole="button"
+                  accessibilityHint="Navega a la página de registro"
                 >
-                  <Ionicons name="arrow-back" size={24} color="#ffffff" />
+                  <Text style={styles.signUpLink}>Registrarse</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Content */}
-              <View style={styles.content}>
-                <View style={styles.titleContainer}>
-                  <Text style={styles.title}>Iniciar sesión</Text>
-                  <Text style={styles.subtitle}>
-                    Bienvenido de vuelta a RuedApp, es hora de gestionar tu vehículo
-                  </Text>
-                </View>
-
-                {/* Form */}
-                <View style={styles.form}>
-                  <ValidatedInput
-                    label="Correo electrónico"
-                    placeholder="Ingresa tu correo electrónico"
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    editable={!isLoading}
-                    leftIcon="mail-outline"
-                    error={errors.email}
-                    validator={validateEmail}
-                    onValidationChange={setIsEmailValid}
-                    showValidation={hasAttemptedSubmit}
-                  />
-
-                  <ValidatedInput
-                    label="Contraseña"
-                    placeholder="Ingresa tu contraseña"
-                    value={password}
-                    onChangeText={handlePasswordChange}
-                    editable={!isLoading}
-                    leftIcon="lock-closed-outline"
-                    showPasswordToggle
-                    error={errors.password}
-                    showValidation={hasAttemptedSubmit}
-                  />
-
-                  <TouchableOpacity 
-                    style={styles.forgotPassword}
-                    onPress={() => setShowForgotPasswordModal(true)}
-                    accessible={true}
-                    accessibilityLabel="¿Olvidaste tu contraseña?"
-                    accessibilityRole="button"
-                    accessibilityHint="Abre el formulario para recuperar tu contraseña"
-                  >
-                    <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={[
-                      styles.loginButton,
-                      (isLoading || (!isFormValid && hasAttemptedSubmit)) && styles.loginButtonDisabled
-                    ]}
-                    onPress={handleSupabaseLogin}
-                    disabled={isLoading || (!isFormValid && hasAttemptedSubmit)}
-                    accessible={true}
-                    accessibilityLabel="Iniciar sesión con Supabase"
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      disabled: isLoading || (!isFormValid && hasAttemptedSubmit),
-                      busy: isLoading
-                    }}
-                  >
-                    {isLoading ? (
-                      <View style={styles.loadingContainer}>
-                        <ActivityIndicator color="#ffffff" size="small" />
-                        <Text style={styles.loadingText}>Iniciando sesión...</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.loginButtonText}>Iniciar sesión con Supabase</Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <View style={styles.signUpContainer}>
-                    <Text style={styles.signUpText}>¿No tienes cuenta? </Text>
-                    <TouchableOpacity 
-                      onPress={() => router.push('/signup')} 
-                      disabled={isLoading}
-                      accessible={true}
-                      accessibilityLabel="Crear nueva cuenta"
-                      accessibilityRole="button"
-                      accessibilityHint="Navega a la página de registro"
-                    >
-                      <Text style={styles.signUpLink}>Registrarse</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </View>
-      </ImageBackground>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
       
       <ForgotPasswordModal
         visible={showForgotPasswordModal}
@@ -256,73 +272,88 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingVertical: 40,
+    backgroundColor: '#ffffff',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 24,
   },
   header: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 20,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
     justifyContent: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#44F1A6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#44F1A6',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+  },
   titleContainer: {
-    marginBottom: 40,
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 10,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#e5e7eb',
+    color: '#666666',
+    textAlign: 'center',
     lineHeight: 24,
   },
   form: {
-    gap: 16,
+    gap: 2,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#22c55e',
+    color: '#44F1A6',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#44F1A6',
+    paddingVertical: 18,
+    borderRadius: 25,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#22c55e',
+    shadowColor: '#44F1A6',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -337,7 +368,8 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -347,34 +379,21 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 30,
+    marginBottom: 20,
   },
   signUpText: {
-    color: '#e5e7eb',
+    color: '#666666',
     fontSize: 16,
   },
   signUpLink: {
-    color: '#22c55e',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  legacyButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#22c55e',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  legacyButtonText: {
-    color: '#22c55e',
+    color: '#44F1A6',
     fontSize: 16,
     fontWeight: '600',
   },
