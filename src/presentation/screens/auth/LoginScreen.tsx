@@ -14,6 +14,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
@@ -29,6 +30,23 @@ export default function LoginScreen() {
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const { login, signInWithSupabase, isConnected, showNetworkWarning } = useAuth();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (!isConnected) {
+        showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
+      } else {
+        // Simular una consulta/chequeo rápido y mostrar mensaje de éxito
+        await new Promise(resolve => setTimeout(resolve, 800));
+        Alert.alert('Consulta exitosa');
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleSupabaseLogin = async () => {
     setHasAttemptedSubmit(true);
@@ -133,7 +151,7 @@ export default function LoginScreen() {
     // La navegación se maneja automáticamente en el AuthContext
   };
 
-  const isFormValid = isEmailValid && password.length > 0 && !hasFormErrors(errors);
+  const isFormValid = !hasFormErrors(validateLoginForm(email, password));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -151,7 +169,18 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#44F1A6"]}
+              tintColor="#44F1A6"
+              title={refreshing ? 'Actualizando...' : ''}
+            />
+          }
+        >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity 
