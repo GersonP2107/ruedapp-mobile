@@ -1,25 +1,45 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 
 export default function SimpleVehicleRegistrationScreen() {
   const [licensePlate, setLicensePlate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Lista SOAT de tipos de documento
+  const SOAT_DOC_TYPES = [
+    { value: 'CC', label: 'Cédula de Ciudadanía' },
+    { value: 'TI', label: 'Tarjeta de Identidad' },
+    { value: 'CE', label: 'Cédula de Extranjería' },
+    { value: 'PA', label: 'Pasaporte' },
+    { value: 'RC', label: 'Registro Civil' },
+    { value: 'NIT', label: 'NIT' },
+  ];
+
+  // Nuevos estados para documento
+  const [documentType, setDocumentType] = useState('CC');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const docTypes = SOAT_DOC_TYPES;
+  const sortedDocTypes = [...docTypes].sort((a, b) => a.label.localeCompare(b.label));
+  const [docTypeSearch, setDocTypeSearch] = useState('');
+  const [docTypeModalVisible, setDocTypeModalVisible] = useState(false);
 
   const { addVehicleWithValidation } = useAuth();
 
@@ -30,6 +50,27 @@ export default function SimpleVehicleRegistrationScreen() {
       setLicensePlate(cleaned);
       setError('');
     }
+  };
+
+  // Formateo dinámico del número de documento según tipo
+  const formatDocument = (text: string) => {
+    const onlyNumeric = documentType === 'CC' || documentType === 'NIT';
+    const cleaned = onlyNumeric
+      ? text.replace(/[^0-9]/g, '')
+      : text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (cleaned.length <= 12) {
+      setDocumentNumber(cleaned);
+    }
+  };
+
+  
+  const getDocumentTypeLabel = (value: string) => {
+    const found = docTypes.find(d => d.value === value);
+    return found ? found.label : value;
+  };
+
+  const getDocPlaceholder = (type: string) => {
+    return type === 'CC' || type === 'TI' ? 'Ej: 12345678' : 'Ej: AB123456';
   };
 
   const handleSubmit = async () => {
@@ -132,7 +173,7 @@ export default function SimpleVehicleRegistrationScreen() {
             {/* Info Card */}
             <View style={styles.infoCard}>
               <View style={styles.infoHeader}>
-                <Ionicons name="shield-checkmark" size={24} color="#44F1A6" />
+                <Ionicons name="shield-checkmark" size={24} color="#2bf39dff" />
                 <Text style={styles.infoTitle}>Validación Automática</Text>
               </View>
               <Text style={styles.infoText}>
@@ -144,6 +185,7 @@ export default function SimpleVehicleRegistrationScreen() {
             </View>
 
             {/* Form */}
+
             <View style={styles.form}>
               <Text style={styles.label}>Placa del Vehículo</Text>
               <TextInput
@@ -156,14 +198,40 @@ export default function SimpleVehicleRegistrationScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
               />
-              
-              {error ? (
-                <Text style={styles.errorText}>{error}</Text>
-              ) : (
+              {/* Nuevo: Tipo de Documento */}
+              <View style={{ marginTop: 24 }}>
+                <Text style={styles.label}>Tipo de Documento</Text>
+                <TouchableOpacity
+                  style={styles.selectContainer}
+                  onPress={() => setDocTypeModalVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Seleccionar tipo de documento"
+                >
+                  <Text style={styles.selectValue}>{getDocumentTypeLabel(documentType)} ({documentType})</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Nuevo: Número de Documento */}
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.label}>Número de Documento</Text>
+                <TextInput
+                  style={styles.input}
+                  value={documentNumber}
+                  onChangeText={formatDocument}
+                  placeholder={getDocPlaceholder(documentType)}
+                  keyboardType={documentType === 'CC' || documentType === 'NIT' ? 'number-pad' : 'default'}
+                  autoCapitalize="characters"
+                  maxLength={12}
+                  accessibilityLabel="Número de documento"
+                  accessibilityHint="Ingresa solo caracteres alfanuméricos. Se admite formato según tipo seleccionado"
+                  editable={!isLoading}
+                />
                 <Text style={styles.helperText}>
-                  Formato: 3 letras seguidas de 3 números
+                  {documentType === 'CC' || documentType === 'NIT'
+                    ? 'Solo números, 6–12 dígitos'
+                    : 'Alfanumérico en mayúsculas, 6–12 caracteres'}
                 </Text>
-              )}
+              </View>
             </View>
 
             {/* Submit Button */}
@@ -175,7 +243,7 @@ export default function SimpleVehicleRegistrationScreen() {
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#ffffff" />
-                  <Text style={styles.loadingText}>Validando con RUNT...</Text>
+                  <Text style={styles.loadingText}>Validando...</Text>
                 </View>
               ) : (
                 <Text style={styles.submitButtonText}>Registrar Vehículo</Text>
@@ -192,6 +260,40 @@ export default function SimpleVehicleRegistrationScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal de selección de tipo de documento */}
+      <Modal
+        visible={docTypeModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDocTypeModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setDocTypeModalVisible(false)}>
+              <Text style={styles.modalCloseText}>X</Text>
+            </TouchableOpacity>
+            <FlatList
+              data={sortedDocTypes.filter(d => (d.label + ' ' + d.value).toLowerCase().includes(docTypeSearch.toLowerCase()))}
+              keyExtractor={(item) => item.value}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setDocumentType(item.value);
+                    setDocTypeModalVisible(false);
+                    setDocTypeSearch('');
+                  }}
+                  accessibilityLabel={`Seleccionar ${item.label}`}
+                >
+                  <Text style={styles.optionLabel}>{item.label} ({item.value})</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -260,11 +362,19 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: '#f8fffe',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
-    marginBottom: 32,
     borderLeftWidth: 4,
     borderLeftColor: '#44F1A6',
+    shadowColor: '#000',
+    marginBottom: 20,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   infoHeader: {
     flexDirection: 'row',
@@ -317,6 +427,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  // Nuevos estilos para selector y modal
+  selectContainer: {
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    padding: 16,
+  },
+  selectValue: {
+    fontSize: 16,
+    color: '#1a1a1a',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  optionItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  optionLabel: {
+    fontSize: 16,
+    color: '#1a1a1a',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  modalClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    left: 270,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: '#333',
   },
   submitButton: {
     backgroundColor: '#44F1A6',

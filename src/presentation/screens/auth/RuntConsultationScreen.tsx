@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform
+  View
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { useRuntConsultation } from '../../hooks/useRuntConsultation';
 import { RuntSimulationService, RuntVehicleData } from '../../../infrastructure/services/RuntSimulationService';
+import { useRuntConsultation } from '../../hooks/useRuntConsultation';
 
 interface RuntConsultationScreenProps {
   onVehicleFound: (vehicleData: RuntVehicleData) => void;
@@ -27,6 +28,10 @@ export const RuntConsultationScreen: React.FC<RuntConsultationScreenProps> = ({
   const [licensePlate, setLicensePlate] = useState('');
   const [documentType, setDocumentType] = useState('CC');
   const [documentNumber, setDocumentNumber] = useState('');
+  const docTypes = RuntSimulationService.getValidDocumentTypes();
+  const sortedDocTypes = [...docTypes].sort((a, b) => a.label.localeCompare(b.label));
+  const [docTypeSearch, setDocTypeSearch] = useState('');
+  const [docTypeModalVisible, setDocTypeModalVisible] = useState(false);
   
   const { consultVehicle, loading, error, clearError } = useRuntConsultation();
 
@@ -73,11 +78,22 @@ export const RuntConsultationScreen: React.FC<RuntConsultationScreenProps> = ({
   };
 
   const formatDocument = (text: string) => {
-    // Solo números para el documento
-    const cleaned = text.replace(/[^0-9]/g, '');
+    const onlyNumeric = documentType === 'CC' || documentType === 'TI';
+    const cleaned = onlyNumeric
+      ? text.replace(/[^0-9]/g, '')
+      : text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     if (cleaned.length <= 12) {
       setDocumentNumber(cleaned);
     }
+  };
+
+  const getDocumentTypeLabel = (value: string) => {
+    const found = docTypes.find(d => d.value === value);
+    return found ? found.label : value;
+  };
+
+  const getDocPlaceholder = (type: string) => {
+    return type === 'CC' || type === 'TI' ? 'Ej: 12345678' : 'Ej: AB123456';
   };
 
   return (
@@ -109,21 +125,14 @@ export const RuntConsultationScreen: React.FC<RuntConsultationScreenProps> = ({
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo de Documento</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={documentType}
-                onValueChange={setDocumentType}
-                style={styles.picker}
-              >
-                {RuntSimulationService.getValidDocumentTypes().map(type => (
-                  <Picker.Item 
-                    key={type.value} 
-                    label={type.label} 
-                    value={type.value} 
-                  />
-                ))}
-              </Picker>
-            </View>
+            <TouchableOpacity
+              style={styles.selectContainer}
+              onPress={() => setDocTypeModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Seleccionar tipo de documento"
+            >
+              <Text style={styles.selectValue}>{getDocumentTypeLabel(documentType)} ({documentType})</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -132,9 +141,12 @@ export const RuntConsultationScreen: React.FC<RuntConsultationScreenProps> = ({
               style={styles.input}
               value={documentNumber}
               onChangeText={formatDocument}
-              placeholder="12345678"
-              keyboardType="numeric"
+              placeholder={getDocPlaceholder(documentType)}
+              keyboardType={documentType === 'CC' || documentType === 'TI' ? 'number-pad' : 'default'}
+              autoCapitalize="characters"
               maxLength={12}
+              accessibilityLabel="Número de documento"
+              accessibilityHint="Ingresa solo caracteres alfanuméricos. Se admite formato según tipo seleccionado"
             />
           </View>
 
@@ -176,6 +188,48 @@ export const RuntConsultationScreen: React.FC<RuntConsultationScreenProps> = ({
           </Text>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={docTypeModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDocTypeModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <Text style={styles.label}>Buscar tipo de documento</Text>
+            <TextInput
+              style={styles.input}
+              value={docTypeSearch}
+              onChangeText={setDocTypeSearch}
+              placeholder="Buscar..."
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            <FlatList
+              data={sortedDocTypes.filter(d => (d.label + ' ' + d.value).toLowerCase().includes(docTypeSearch.toLowerCase()))}
+              keyExtractor={(item) => item.value}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setDocumentType(item.value);
+                    setDocTypeModalVisible(false);
+                    setDocTypeSearch('');
+                  }}
+                  accessibilityLabel={`Seleccionar ${item.label}`}
+                >
+                  <Text style={styles.optionLabel}>{item.label} ({item.value})</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.modalClose} onPress={() => setDocTypeModalVisible(false)}>
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -241,6 +295,53 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  selectContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+  },
+  selectValue: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  optionItem: {
+    paddingVertical: 12,
+  },
+  optionLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalClose: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: '#333',
   },
   errorContainer: {
     backgroundColor: '#ffebee',

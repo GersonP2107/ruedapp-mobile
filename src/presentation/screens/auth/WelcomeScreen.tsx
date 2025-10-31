@@ -44,6 +44,13 @@ export default function WelcomeScreen() {
               {/* Buttons */}
               <View style={styles.buttonContainer}>
                 <TouchableOpacity 
+                  style={styles.startButton}
+                  onPress={() => router.push('./onboarding')}
+                >
+                  <Text style={styles.startButtonText}>Empezar ahora</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
                   style={styles.signUpButton}
                   onPress={() => router.push('./signup')}
                 >
@@ -202,6 +209,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  startButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  startButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   signUpButtonText: {
     color: 'black',

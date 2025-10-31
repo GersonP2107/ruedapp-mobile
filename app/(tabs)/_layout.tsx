@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 export default function TabLayout() {
@@ -12,7 +12,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#6b7280',
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#ffffff',
+          backgroundColor: '#ffffff',
         },
       }}
     >

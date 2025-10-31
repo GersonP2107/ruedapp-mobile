@@ -1,13 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
 import { useEffect } from 'react';
-import { router } from 'expo-router';
+import 'react-native-reanimated';
 
-import { useColorScheme } from '../../infrastructure/hooks/useColorScheme';
 import { AuthProvider, useAuth } from '../../infrastructure/context/AuthContext';
+import { useColorScheme } from '../../infrastructure/hooks/useColorScheme';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -35,7 +34,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </ThemeProvider>
   );
 }

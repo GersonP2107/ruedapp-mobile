@@ -4,16 +4,26 @@
     "slug": "RuedApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/ruedapp-icon.png",
     "scheme": "ruedapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/ruedapp-icon.png",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Tu ubicación se utiliza para mostrar talleres cercanos y asistencia.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Tu ubicación se utiliza para recomendar servicios cercanos mientras usas la app."
+      }
     },
     "android": {
+      "icon": "./assets/images/ruedapp-icon.png",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/ruedapp-icon.png ",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true

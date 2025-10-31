@@ -142,8 +142,8 @@ export class RuntSimulationService {
    * Valida el número de documento
    */
   static validateDocumentNumber(documentNumber: string): boolean {
-    // Validar que sea numérico y tenga entre 6 y 12 dígitos
-    const docRegex = /^[0-9]{6,12}$/;
+    // Validar que sea alfanumérico y tenga entre 6 y 12 caracteres
+    const docRegex = /^[A-Za-z0-9]{6,12}$/;
     return docRegex.test(documentNumber);
   }
 

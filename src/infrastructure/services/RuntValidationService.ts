@@ -227,7 +227,7 @@ export class RuntValidationService {
    * Valida el número de documento
    */
   private static validateDocumentNumber(documentNumber: string): boolean {
-    const docRegex = /^[0-9]{6,12}$/;
+    const docRegex = /^[A-Za-z0-9]{6,12}$/;
     return docRegex.test(documentNumber);
   }
 
