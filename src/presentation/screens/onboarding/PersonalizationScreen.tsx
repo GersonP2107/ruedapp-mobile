@@ -49,6 +49,9 @@ export default function PersonalizationScreen() {
         }
       }
 
+      // Marcar onboarding como completado
+      await AsyncStorage.setItem('onboarding_completed', 'true');
+
       await analytics.completeSession(true, user?.id);
       router.replace('/welcome');
     } catch (e: any) {

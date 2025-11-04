@@ -1,11 +1,10 @@
-import { handleAuthError, logError } from '@/utils/errorHandling';
-import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../../../../constants/Colors';
+import { handleAuthError, logError } from '../../../../utils/errorHandling';
+import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '../../../../utils/validation';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { ForgotPasswordModal, LoadingScreen, ValidatedInput } from '../../components';
 
@@ -164,11 +166,11 @@ export default function LoginScreen() {
 
           {/* Content */}
           <View style={styles.content}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="car-sport" size={32} color="#ffffff" />
-              </View>
-            </View>
+            <Image
+              source={require('../../../../assets/images/ruedapp-icon.png')}
+              style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 20, alignSelf: 'center' }}
+              resizeMode="contain"
+              />
 
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Iniciar sesión</Text>
@@ -256,6 +258,29 @@ export default function LoginScreen() {
                   <Text style={styles.signUpLink}>Registrarse</Text>
                 </TouchableOpacity>
               </View>
+              {/* Social Buttons */}
+              <TouchableOpacity 
+                style={styles.googleButton}
+                onPress={() => {
+                  // Implementar Google Sign In
+                  console.log('Google Sign In');
+                }}
+              >
+                <Ionicons name="logo-google" size={20} color="#000000" style={styles.buttonIcon} />
+                <Text style={styles.googleButtonText}>Continuar con Google</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.appleButton}
+                onPress={() => {
+                  // Implementar Apple Sign In
+                  console.log('Apple Sign In');
+                }}
+              >
+                <Ionicons name="logo-apple" size={20} color="#ffffff" style={styles.buttonIcon} />
+                <Text style={styles.appleButtonText}>Continuar con Apple</Text>
+              </TouchableOpacity>
+
             </View>
           </View>
         </ScrollView>
@@ -265,11 +290,13 @@ export default function LoginScreen() {
         visible={showForgotPasswordModal}
         onClose={() => setShowForgotPasswordModal(false)}
       />
+      
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -297,26 +324,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#44F1A6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#44F1A6',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-  },
   titleContainer: {
     alignItems: 'center',
     marginBottom: 32,
@@ -336,24 +343,24 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   form: {
-    gap: 2,
+    gap: 1,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#44F1A6',
+    color: 'black',
     fontSize: 14,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#44F1A6',
+    backgroundColor: Colors.primary,
     paddingVertical: 18,
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#44F1A6',
+    shadowColor: Colors.primary,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -366,7 +373,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginButtonText: {
-    color: '#ffffff',
+    color: 'black',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
@@ -393,8 +400,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signUpLink: {
-    color: '#44F1A6',
+    color: 'black',
     fontSize: 16,
     fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+    marginBottom: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  googleButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+    marginBottom: 6,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  appleButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
 });

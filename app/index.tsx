@@ -1,16 +1,39 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../src/infrastructure/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
 export default function Index() {
   const { user, isLoading, vehicles } = useAuth();
+  const [firstLaunchChecked, setFirstLaunchChecked] = useState(false);
+  const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem('onboarding_completed');
+        if (mounted) {
+          setShouldShowOnboarding(seen !== 'true');
+        }
+      } finally {
+        if (mounted) setFirstLaunchChecked(true);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  if (isLoading || !firstLaunchChecked) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#22c55e" />
       </View>
     );
+  }
+
+  if (shouldShowOnboarding) {
+    return <Redirect href="/onboarding" />;
   }
 
   if (user) {

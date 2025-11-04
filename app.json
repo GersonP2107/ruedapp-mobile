@@ -23,7 +23,7 @@
         "POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ruedapp-icon.png ",
+        "foregroundImage": "./assets/images/ruedapp-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
@@ -38,9 +38,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-icon.webp",
           "imageWidth": 200,
-          "resizeMode": "contain",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff"
         }
       ]

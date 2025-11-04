@@ -1,6 +1,3 @@
-import { useAuth } from '../../../infrastructure/context/AuthContext';
-import { handleAuthError, logError } from '@/utils/errorHandling';
-import { FormErrors, getPasswordStrength, hasFormErrors, validateEmail, validateFullName, validatePassword, validateSignupForm } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -17,6 +14,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { handleAuthError, logError } from "../../../../utils/errorHandling";
+import { FormErrors, getPasswordStrength, hasFormErrors, validateEmail, validateFullName, validatePassword, validateSignupForm } from "../../../../utils/validation";
+import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { LoadingScreen, ValidatedInput } from '../../components';
 
 export default function SignUpScreen() {
@@ -145,7 +145,7 @@ export default function SignUpScreen() {
     setIsNameValid(nameValidation.isValid);
     
     if (hasAttemptedSubmit) {
-      setErrors(prev => ({
+      setErrors((prev: FormErrors) => ({
         ...prev,
         fullName: nameValidation.isValid ? undefined : nameValidation.message
       }));
@@ -158,7 +158,7 @@ export default function SignUpScreen() {
     setIsEmailValid(emailValidation.isValid);
     
     if (hasAttemptedSubmit) {
-      setErrors(prev => ({
+      setErrors((prev: FormErrors) => ({
         ...prev,
         email: emailValidation.isValid ? undefined : emailValidation.message
       }));
@@ -174,7 +174,7 @@ export default function SignUpScreen() {
     setIsPasswordValid(passwordValidation.isValid);
     
     if (hasAttemptedSubmit) {
-      setErrors(prev => ({
+      setErrors((prev: FormErrors) => ({
         ...prev,
         password: passwordValidation.isValid ? undefined : passwordValidation.message
       }));
@@ -183,7 +183,7 @@ export default function SignUpScreen() {
       if (confirmPassword) {
         const confirmPasswordValidation = validateConfirmPassword(confirmPassword);
         setIsConfirmPasswordValid(confirmPasswordValidation.isValid);
-        setErrors(prev => ({
+        setErrors((prev: FormErrors) => ({
           ...prev,
           confirmPassword: confirmPasswordValidation.isValid ? undefined : confirmPasswordValidation.message
         }));
@@ -203,7 +203,7 @@ export default function SignUpScreen() {
     setIsConfirmPasswordValid(confirmPasswordValidation.isValid);
     
     if (hasAttemptedSubmit) {
-      setErrors(prev => ({
+      setErrors((prev: FormErrors) => ({
         ...prev,
         confirmPassword: confirmPasswordValidation.isValid ? undefined : confirmPasswordValidation.message
       }));

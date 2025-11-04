@@ -149,7 +149,7 @@ export default function ValidatedInput({
   };
 
   return (
-    <View style={styles.container}>
+    <View >
       {label && (
         <Text style={[styles.label, hasError && styles.labelError]}>
           {label}
@@ -275,14 +275,11 @@ export default function ValidatedInput({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 4,
-  },
+
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151', // Cambiar de blanco a gris oscuro
-    marginBottom: 8,
   },
   labelError: {
     color: '#ef4444',

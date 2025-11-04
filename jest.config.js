@@ -13,8 +13,5 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
-  }
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json']
 };

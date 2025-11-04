@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import {
+  Image,
   ImageBackground,
   StatusBar,
   StyleSheet,
@@ -25,11 +26,11 @@ export default function WelcomeScreen() {
           <View style={styles.overlay}>
             <View style={styles.content}>
               {/* Logo */}
-              <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}>
-                  <Ionicons name="car-sport" size={32} color="#ffffff" />
-                </View>
-              </View>
+              <Image
+                source={require('../../../../assets/images/ruedapp-icon.png')}
+                style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 20 }}
+                resizeMode="contain"
+              />
     
               {/* Title */}
               <View style={styles.titleContainer}>
@@ -143,25 +144,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  logoContainer: {
-    marginBottom: 30,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#44F1A6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#22c55e',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
   },
   titleContainer: {
     alignItems: 'center',
