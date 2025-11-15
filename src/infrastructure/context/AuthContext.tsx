@@ -368,14 +368,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Métodos de Supabase
-  const signUpWithSupabase = async (email: string, password: string, options?: { full_name?: string; phone?: string }) => {
-    const { data, error } = await supabase.auth.signUp({
+  const signUpWithSupabase = async (email: string, password?: string, options?: { full_name?: string; phone?: string }) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
+        shouldCreateUser: true,
+        emailRedirectTo: 'exp://192.168.1.13:8081',
         data: {
           full_name: options?.full_name,
-          phone: options?.phone,
+          // No guardar contraseña en metadata; se establecerá luego en CreatePassword
         },
       },
     });
@@ -454,6 +455,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Nuevo método para agregar vehículo con validación automática del RUNT
+  const addVehicleWithValidation = async (licensePlate: string): Promise<{
+    success: boolean;
+    error?: string;
+    validationResult?: VehicleValidationResult;
+  }> => {
+    if (!supabaseUser) {
+      return { success: false, error: 'Usuario no autenticado' };
+    }
+
+    try {
+      // Obtener perfil del usuario para extraer documento
+      const profile = await fetchUserProfile();
+      if (!profile) {
+        return { success: false, error: 'No se pudo obtener el perfil del usuario' };
+      }
+
+      // Extraer información del documento (necesitarás agregar estos campos al perfil)
+      const userDocument = RuntValidationService.extractDocumentFromProfile(profile);
+      if (!userDocument) {
+        return { 
+          success: false, 
+          error: 'Información de documento incompleta. Complete su perfil primero.' 
+        };
+      }
+
+      // Validar vehículo con el RUNT
+      const validationResult = await RuntValidationService.validateVehicleOwnership(
+        licensePlate,
+        userDocument
+      );
+
+      if (!validationResult.isValid) {
+        return {
+          success: false,
+          error: validationResult.error,
+          validationResult
+        };
+      }
+
+      // Si la validación es exitosa, registrar el vehículo automáticamente
+      const vehicleData = validationResult.vehicleData!;
+      
+      // Obtener ID del tipo de vehículo
+      const vehicleTypeId = await RuntValidationService.getVehicleTypeId(vehicleData.vehicleType);
+      if (!vehicleTypeId) {
+        return { success: false, error: 'Tipo de vehículo no válido' };
+      }
+
+      // Crear el vehículo en la base de datos
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert([{
+          user_id: supabaseUser.id,
+          vehicle_type_id: vehicleTypeId,
+          license_plate: licensePlate.toUpperCase(),
+          brand: vehicleData.brand,
+          model: vehicleData.model,
+          year: vehicleData.year,
+          color: vehicleData.color,
+          mileage: 0, // Valor por defecto
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Actualizar lista de vehículos
+      await fetchUserVehicles();
+
+      return {
+        success: true,
+        validationResult
+      };
+    
+    } catch (error: any) {
+      console.error('Error en addVehicleWithValidation:', error);
+      return {
+        success: false,
+        error: 'Error del sistema. Intente nuevamente.'
+      };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -481,6 +567,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteVehicle,
       setActiveVehicle,
       makeAuthenticatedRequest,
+      addVehicleWithValidation,
     }}>
       <NetworkStatusBanner
         isVisible={showBanner}
@@ -502,89 +589,3 @@ export function useAuth() {
 }
 
 export type { AuthContextType, User, UserProfile, Vehicle };
-
-
-// Nuevo método para agregar vehículo con validación automática del RUNT
-const addVehicleWithValidation = async (licensePlate: string): Promise<{
-  success: boolean;
-  error?: string;
-  validationResult?: VehicleValidationResult;
-}> => {
-  if (!supabaseUser) {
-    return { success: false, error: 'Usuario no autenticado' };
-  }
-
-  try {
-    // Obtener perfil del usuario para extraer documento
-    const profile = await fetchUserProfile();
-    if (!profile) {
-      return { success: false, error: 'No se pudo obtener el perfil del usuario' };
-    }
-
-    // Extraer información del documento (necesitarás agregar estos campos al perfil)
-    const userDocument = RuntValidationService.extractDocumentFromProfile(profile);
-    if (!userDocument) {
-      return { 
-        success: false, 
-        error: 'Información de documento incompleta. Complete su perfil primero.' 
-      };
-    }
-
-    // Validar vehículo con el RUNT
-    const validationResult = await RuntValidationService.validateVehicleOwnership(
-      licensePlate,
-      userDocument
-    );
-
-    if (!validationResult.isValid) {
-      return {
-        success: false,
-        error: validationResult.error,
-        validationResult
-      };
-    }
-
-    // Si la validación es exitosa, registrar el vehículo automáticamente
-    const vehicleData = validationResult.vehicleData!;
-    
-    // Obtener ID del tipo de vehículo
-    const vehicleTypeId = await RuntValidationService.getVehicleTypeId(vehicleData.vehicleType);
-    if (!vehicleTypeId) {
-      return { success: false, error: 'Tipo de vehículo no válido' };
-    }
-
-    // Crear el vehículo en la base de datos
-    const { data, error } = await supabase
-      .from('vehicles')
-      .insert([{
-        user_id: supabaseUser.id,
-        vehicle_type_id: vehicleTypeId,
-        license_plate: licensePlate.toUpperCase(),
-        brand: vehicleData.brand,
-        model: vehicleData.model,
-        year: vehicleData.year,
-        color: vehicleData.color,
-        mileage: 0, // Valor por defecto
-        is_active: true
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Actualizar lista de vehículos
-    await fetchUserVehicles();
-
-    return {
-      success: true,
-      validationResult
-    };
-  
-  } catch (error: any) {
-    console.error('Error en addVehicleWithValidation:', error);
-    return {
-      success: false,
-      error: 'Error del sistema. Intente nuevamente.'
-    };
-  }
-};

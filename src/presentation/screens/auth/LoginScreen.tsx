@@ -20,6 +20,7 @@ import { handleAuthError, logError } from '../../../../utils/errorHandling';
 import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '../../../../utils/validation';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { ForgotPasswordModal, LoadingScreen, ValidatedInput } from '../../components';
+import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -182,7 +183,6 @@ export default function LoginScreen() {
             {/* Form */}
             <View style={styles.form}>
               <ValidatedInput
-                label="Correo electrónico"
                 placeholder="Ingresa tu correo electrónico"
                 value={email}
                 onChangeText={handleEmailChange}
@@ -196,9 +196,7 @@ export default function LoginScreen() {
                 onValidationChange={setIsEmailValid}
                 showValidation={hasAttemptedSubmit}
               />
-
               <ValidatedInput
-                label="Contraseña"
                 placeholder="Ingresa tu contraseña"
                 value={password}
                 onChangeText={handlePasswordChange}
@@ -258,29 +256,8 @@ export default function LoginScreen() {
                   <Text style={styles.signUpLink}>Registrarse</Text>
                 </TouchableOpacity>
               </View>
-              {/* Social Buttons */}
-              <TouchableOpacity 
-                style={styles.googleButton}
-                onPress={() => {
-                  // Implementar Google Sign In
-                  console.log('Google Sign In');
-                }}
-              >
-                <Ionicons name="logo-google" size={20} color="#000000" style={styles.buttonIcon} />
-                <Text style={styles.googleButtonText}>Continuar con Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.appleButton}
-                onPress={() => {
-                  // Implementar Apple Sign In
-                  console.log('Apple Sign In');
-                }}
-              >
-                <Ionicons name="logo-apple" size={20} color="#ffffff" style={styles.buttonIcon} />
-                <Text style={styles.appleButtonText}>Continuar con Apple</Text>
-              </TouchableOpacity>
-
+                {/* Social Buttons */}
+                <SocialSignInButtons />
             </View>
           </View>
         </ScrollView>
@@ -344,6 +321,7 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 1,
+    paddingBottom: 40,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
@@ -393,7 +371,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 30,
-    marginBottom: 20,
+    marginBottom: 5,
   },
   signUpText: {
     color: '#666666',
@@ -456,5 +434,21 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 4,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });

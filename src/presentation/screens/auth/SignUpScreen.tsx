@@ -2,8 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,217 +10,64 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { handleAuthError, logError } from "../../../../utils/errorHandling";
-import { FormErrors, getPasswordStrength, hasFormErrors, validateEmail, validateFullName, validatePassword, validateSignupForm } from "../../../../utils/validation";
+import { Colors } from '../../../../constants/Colors';
+import { FormErrors, validateEmail } from "../../../../utils/validation";
 import { useAuth } from '../../../infrastructure/context/AuthContext';
-import { LoadingScreen, ValidatedInput } from '../../components';
+import { ValidatedInput } from '../../components';
+import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
 
 export default function SignUpScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showLoading, setShowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [isNameValid, setIsNameValid] = useState(false);
-  const [isPasswordValid, setIsPasswordValid] = useState(false);
-  const [isConfirmPasswordValid, setIsConfirmPasswordValid] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '#e5e7eb' });
-  const { register, signUpWithSupabase, isConnected, showNetworkWarning } = useAuth();
+  const { isConnected, showNetworkWarning } = useAuth();
 
-  // Función para validar confirmación de contraseña
-  const validateConfirmPassword = (confirmPass: string) => {
-    if (!confirmPass) {
-      return { isValid: false, message: 'La confirmación de contraseña es requerida' };
-    }
-    if (confirmPass !== password) {
-      return { isValid: false, message: 'Las contraseñas no coinciden' };
-    }
-    return { isValid: true };
-  };
-
-  const handleSupabaseSignUp = async () => {
-    setHasAttemptedSubmit(true);
-    
-    // Verificar conectividad
-    if (!isConnected) {
-      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
-      return;
-    }
-    
-    // Validar formulario incluyendo confirmación de contraseña
-    const formErrors = validateSignupForm(fullName, email, password);
-    const confirmPasswordValidation = validateConfirmPassword(confirmPassword);
-    
-    if (!confirmPasswordValidation.isValid) {
-      formErrors.confirmPassword = confirmPasswordValidation.message;
-    }
-    
-    setErrors(formErrors);
-    
-    if (hasFormErrors(formErrors)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await signUpWithSupabase(email.trim(), password, {
-        full_name: fullName.trim(),
-      });
-      
-      if (error) {
-        const errorResponse = handleAuthError(error);
-        Alert.alert(errorResponse.title, errorResponse.message);
-      } else {
-        // Mostrar pantalla de carga antes del redireccionamiento
-        setIsLoading(false);
-        setShowLoading(true);
-      }
-    } catch (error) {
-      logError('Signup', error, { email, fullName });
-      const errorResponse = handleAuthError(error);
-      Alert.alert(errorResponse.title, errorResponse.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoadingComplete = () => {
-    setShowLoading(false);
-    router.push('/vehicle-registration');
-  };
-
-  const handleLegacySignUp = async () => {
-    setHasAttemptedSubmit(true);
-    
-    // Verificar conectividad
-    if (!isConnected) {
-      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
-      return;
-    }
-    
-    // Validar formulario incluyendo confirmación de contraseña
-    const formErrors = validateSignupForm(fullName, email, password);
-    const confirmPasswordValidation = validateConfirmPassword(confirmPassword);
-    
-    if (!confirmPasswordValidation.isValid) {
-      formErrors.confirmPassword = confirmPasswordValidation.message;
-    }
-    
-    setErrors(formErrors);
-    
-    if (hasFormErrors(formErrors)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const success = await register(fullName.trim(), email.trim(), password);
-      if (success) {
-        Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido creada exitosamente. Ya puedes comenzar a usar RuedApp.');
-        // La navegación se maneja automáticamente en el AuthContext
-      } else {
-        const errorResponse = handleAuthError({ message: 'Registration failed' });
-        Alert.alert(errorResponse.title, errorResponse.message);
-      }
-    } catch (error) {
-      logError('Legacy Signup', error, { email, fullName });
-      const errorResponse = handleAuthError(error);
-      Alert.alert(errorResponse.title, errorResponse.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNameChange = (value: string) => {
-    setFullName(value);
-    const nameValidation = validateFullName(value);
-    setIsNameValid(nameValidation.isValid);
-    
-    if (hasAttemptedSubmit) {
-      setErrors((prev: FormErrors) => ({
-        ...prev,
-        fullName: nameValidation.isValid ? undefined : nameValidation.message
-      }));
-    }
-  };
 
   const handleEmailChange = (value: string) => {
-    setEmail(value);
-    const emailValidation = validateEmail(value);
+    // Normaliza el email para evitar espacios
+    const normalized = value.trim();
+    setEmail(normalized);
+    const emailValidation = validateEmail(normalized);
     setIsEmailValid(emailValidation.isValid);
-    
+
     if (hasAttemptedSubmit) {
-      setErrors((prev: FormErrors) => ({
+      setErrors((prev) => ({
         ...prev,
-        email: emailValidation.isValid ? undefined : emailValidation.message
+        email: emailValidation.isValid ? undefined : emailValidation.message,
       }));
     }
   };
 
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    const strength = getPasswordStrength(value);
-    setPasswordStrength(strength);
-    
-    const passwordValidation = validatePassword(value);
-    setIsPasswordValid(passwordValidation.isValid);
-    
-    if (hasAttemptedSubmit) {
-      setErrors((prev: FormErrors) => ({
-        ...prev,
-        password: passwordValidation.isValid ? undefined : passwordValidation.message
-      }));
-      
-      // Re-validar confirmación de contraseña si ya se ingresó
-      if (confirmPassword) {
-        const confirmPasswordValidation = validateConfirmPassword(confirmPassword);
-        setIsConfirmPasswordValid(confirmPasswordValidation.isValid);
-        setErrors((prev: FormErrors) => ({
-          ...prev,
-          confirmPassword: confirmPasswordValidation.isValid ? undefined : confirmPasswordValidation.message
-        }));
-      }
-    } else {
-      // También validar confirmación de contraseña en tiempo real si ya se ingresó
-      if (confirmPassword) {
-        const confirmPasswordValidation = validateConfirmPassword(confirmPassword);
-        setIsConfirmPasswordValid(confirmPasswordValidation.isValid);
-      }
+  const isFormValid = isEmailValid && isNameValid;
+
+  const handleProceedToVerification = () => {
+    setHasAttemptedSubmit(true);
+
+    // Si no hay conexión, muestra advertencia inmediata
+    if (!isConnected) {
+      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
+      return;
     }
+
+    // Ejecuta validaciones en el clic, con feedback visual y alerta
+    const trimmedEmail = email.trim();
+    const emailValidation = validateEmail(trimmedEmail);
+    const formErrors: FormErrors = {
+      email: emailValidation.isValid ? undefined : emailValidation.message,
+    };
+    setErrors(formErrors);
+
+    router.push({
+      pathname: '/verify-otp',
+      params: { email: trimmedEmail },
+    });
   };
-
-  const handleConfirmPasswordChange = (value: string) => {
-    setConfirmPassword(value);
-    const confirmPasswordValidation = validateConfirmPassword(value);
-    setIsConfirmPasswordValid(confirmPasswordValidation.isValid);
-    
-    if (hasAttemptedSubmit) {
-      setErrors((prev: FormErrors) => ({
-        ...prev,
-        confirmPassword: confirmPasswordValidation.isValid ? undefined : confirmPasswordValidation.message
-      }));
-    }
-  };
-
-  const isFormValid = isEmailValid && isNameValid && isPasswordValid && isConfirmPasswordValid;
-
-  if (showLoading) {
-    return (
-      <LoadingScreen
-        title="¡Registro exitoso!"
-        subtitle="Preparando el registro de tu primer vehículo..."
-        duration={2500}
-        onComplete={handleLoadingComplete}
-      />
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -230,7 +76,11 @@ export default function SignUpScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          // Permite que el botón reciba clics aunque el teclado esté abierto
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity 
@@ -244,9 +94,12 @@ export default function SignUpScreen() {
           {/* Content */}
           <View style={styles.content}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="car-sport" size={32} color="#ffffff" />
-              </View>
+              {/* Logo */}
+              <Image
+                source={require('../../../../assets/images/ruedapp-icon.png')}
+                style={{ width: 80, height: 80, borderRadius: 16}}
+                resizeMode="contain"
+              />
             </View>
 
             <View style={styles.titleContainer}>
@@ -259,98 +112,42 @@ export default function SignUpScreen() {
             {/* Form */}
             <View style={styles.form}>
               <ValidatedInput
-                label="Nombre completo"
-                placeholder="Ingresa tu nombre y apellido"
-                value={fullName}
-                onChangeText={handleNameChange}
-                autoCapitalize="words"
-                autoComplete="name"
-                editable={!isLoading}
-                leftIcon="person-outline"
-                error={errors.fullName}
-                validator={validateFullName}
-                onValidationChange={setIsNameValid}
-                showValidation={hasAttemptedSubmit}
-              />
-
-              <ValidatedInput
-                label="Correo electrónico"
                 placeholder="Ingresa tu correo electrónico"
                 value={email}
                 onChangeText={handleEmailChange}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
-                editable={!isLoading}
+                editable={true}
                 leftIcon="mail-outline"
                 error={errors.email}
                 validator={validateEmail}
                 onValidationChange={setIsEmailValid}
                 showValidation={hasAttemptedSubmit}
               />
-
-              <ValidatedInput
-                label="Contraseña"
-                placeholder="Crea una contraseña segura"
-                value={password}
-                onChangeText={handlePasswordChange}
-                editable={!isLoading}
-                leftIcon="lock-closed-outline"
-                showPasswordToggle
-                error={errors.password}
-                validator={validatePassword}
-                onValidationChange={setIsPasswordValid}
-                showValidation={hasAttemptedSubmit}
-                strengthIndicator
-                strengthScore={passwordStrength.score}
-                strengthLabel={passwordStrength.label}
-                strengthColor={passwordStrength.color}
-              />
-
-              <ValidatedInput
-                label="Confirmar contraseña"
-                placeholder="Confirma tu contraseña"
-                value={confirmPassword}
-                onChangeText={handleConfirmPasswordChange}
-                editable={!isLoading}
-                leftIcon="lock-closed-outline"
-                showPasswordToggle
-                error={errors.confirmPassword}
-                validator={validateConfirmPassword}
-                onValidationChange={setIsConfirmPasswordValid}
-                showValidation={hasAttemptedSubmit}
-              />
-
-              <TouchableOpacity 
+              {/* Botón */}
+              <TouchableOpacity
                 style={[
                   styles.createAccountButton,
-                  (isLoading || !isFormValid) && styles.createAccountButtonDisabled
+                  !isFormValid && styles.createAccountButtonDisabled,
                 ]}
-                onPress={handleSupabaseSignUp}
-                disabled={isLoading || !isFormValid}
+                onPress={handleProceedToVerification}
+                disabled={!isFormValid}
                 accessible={true}
-                accessibilityLabel="Crear cuenta"
+                accessibilityLabel="Continuar a la verificación de correo"
                 accessibilityRole="button"
-                accessibilityState={{
-                  disabled: isLoading || !isFormValid,
-                  busy: isLoading
-                }}
+                accessibilityHint="Navega a la pantalla de verificación de correo"
+                accessibilityState={{ disabled: !isFormValid }}
+                testID="signup-confirm-email-button"
               >
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator color="#ffffff" size="small" />
-                    <Text style={styles.loadingText}>Creando cuenta...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.createAccountButtonText}>Registrarse</Text>
-                )}
+                <Text style={styles.createAccountButtonText}>Confirmar correo</Text>
               </TouchableOpacity>
 
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>¿Ya tienes cuenta? </Text>
                 <TouchableOpacity 
                   onPress={() => router.push('/login')} 
-                  disabled={isLoading}
+                  disabled={false}
                   accessible={true}
                   accessibilityLabel="Iniciar sesión"
                   accessibilityRole="button"
@@ -359,6 +156,7 @@ export default function SignUpScreen() {
                   <Text style={styles.loginLink}>Iniciar sesión</Text>
                 </TouchableOpacity>
               </View>
+              <SocialSignInButtons />
             </View>
           </View>
         </ScrollView>
@@ -399,22 +197,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#44F1A6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#44F1A6',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-  },
   titleContainer: {
     alignItems: 'center',
     marginBottom: 32,
@@ -447,12 +229,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   createAccountButton: {
-    backgroundColor: '#44F1A6',
+    backgroundColor: Colors.primary,
     paddingVertical: 18,
     borderRadius: 25,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#44F1A6',
+    marginBottom: 10,
+    shadowColor: 'black',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -465,7 +247,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   createAccountButtonText: {
-    color: '#ffffff',
+    color: 'black',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
@@ -474,15 +256,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20,
   },
   loginText: {
     color: '#666666',
     fontSize: 16,
   },
   loginLink: {
-    color: '#44F1A6',
+    color: 'black',
     fontSize: 16,
     fontWeight: '600',
   },

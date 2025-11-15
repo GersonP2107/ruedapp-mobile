@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import {
@@ -11,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../../../../constants/Colors';
+import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
 
 export default function WelcomeScreen() {
   return (
@@ -57,38 +58,7 @@ export default function WelcomeScreen() {
                 >
                   <Text style={styles.signUpButtonText}>Registrarse gratis</Text>
                 </TouchableOpacity>
-                
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>o continúa con</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Buttons */}
-              <TouchableOpacity 
-                style={styles.googleButton}
-                onPress={() => {
-                  // Implementar Google Sign In
-                  console.log('Google Sign In');
-                }}
-              >
-                <Ionicons name="logo-google" size={20} color="#000000" style={styles.buttonIcon} />
-                <Text style={styles.googleButtonText}>Continuar con Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.appleButton}
-                onPress={() => {
-                  // Implementar Apple Sign In
-                  console.log('Apple Sign In');
-                }}
-              >
-                <Ionicons name="logo-apple" size={20} color="#ffffff" style={styles.buttonIcon} />
-                <Text style={styles.appleButtonText}>Continuar con Apple</Text>
-              </TouchableOpacity>
-
-    
+                <SocialSignInButtons/>
                 <TouchableOpacity 
                   style={styles.loginButton}
                   onPress={() => router.push('./login')}
@@ -108,22 +78,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff', // Color de respaldo
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 3,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
   },
   backgroundImage: {
     flex: 1,
@@ -177,12 +131,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   signUpButton: {
-    backgroundColor: '#44F1A6',
+    backgroundColor: Colors.primary,
     paddingVertical: 18,
     paddingHorizontal: 32,
     borderRadius: 25,
     alignItems: 'center',
-    marginBottom: 6,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -216,56 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
-  },
-  googleButton: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    marginBottom: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  googleButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  appleButton: {
-    backgroundColor: '#000000',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    marginBottom: 6,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  appleButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
   },
   loginButton: {
     backgroundColor: 'transparent',
