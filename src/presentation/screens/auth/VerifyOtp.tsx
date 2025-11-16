@@ -11,8 +11,8 @@ const RESEND_TIMEOUT = 60; // seconds
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { email, fullName } = useLocalSearchParams<{ email: string; fullName: string }>();
-  const { signUpWithSupabase } = useAuth();
+  const { email, intent } = useLocalSearchParams<{ email: string, intent?: "login" | "signup" }>();
+  const { signUpWithSupabase, sendOtpLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
@@ -20,7 +20,7 @@ export default function VerifyOTPScreen() {
   const otpInputRef = useRef<OtpInputRef>(null);
 
   const sendOtp = async (isResend = false) => {
-    if (!email || !fullName) {
+    if (!email) {
       Alert.alert('Error', 'Faltan datos del registro. Vuelve al inicio.');
       router.replace('/signup');
       return;
@@ -32,8 +32,12 @@ export default function VerifyOTPScreen() {
       if (!isResend) {
         setIsSendingInitialOtp(true);
       }
-      // Usamos signUpWithSupabase para unificar la lógica de envío de OTP
-      const { error } = await signUpWithSupabase(email, fullName, { full_name: fullName });
+      let error;
+      if (intent === 'login') {
+        ({ error } = await sendOtpLogin(email));
+      } else {
+        ({ error } = await signUpWithSupabase(email));
+      }
       if (error) throw error;
 
       if (isResend) {
@@ -59,7 +63,7 @@ export default function VerifyOTPScreen() {
   // Enviar OTP al cargar la pantalla
   useEffect(() => {
     sendOtp();
-  }, [email, fullName]);
+  }, [email]);
 
   // Temporizador para reenviar
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function VerifyOTPScreen() {
     };
   }, [resendTimer]);
   const verify = async () => {
-    if (!email || !fullName) {
+    if (!email) {
       Alert.alert('Error', 'Faltan datos del registro. Vuelve al inicio.');
       router.replace('/signup');
       return;
@@ -85,11 +89,17 @@ export default function VerifyOTPScreen() {
       const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: otpCode, type: 'email' });
       if (verifyError) throw verifyError;
 
-      // Ir a crear contraseña
-      router.replace({
-        pathname: '/create-password',
-        params: { email, fullName },
-      });
+      if (intent === 'login') {
+        router.replace({
+          pathname: '/(tabs)',
+          params: { email },
+        });
+      } else {
+        router.replace({
+          pathname: '/vehicle-registration',
+          params: { email },
+        });
+      }
     } catch (err: any) {
       handleAuthError(err);
       logError(err, 'VerifyOTPScreen.verify');

@@ -126,18 +126,13 @@ export const getPasswordStrength = (password: string): {
 };
 
 // Validación completa del formulario de login
-export const validateLoginForm = (email: string, password: string): FormErrors => {
+export const validateLoginForm = (email: string ): FormErrors => {
   const errors: FormErrors = {};
   
   const emailValidation = validateEmail(email);
   if (!emailValidation.isValid) {
     errors.email = emailValidation.message;
   }
-  
-  if (!password) {
-    errors.password = 'La contraseña es requerida';
-  }
-  
   return errors;
 };
 

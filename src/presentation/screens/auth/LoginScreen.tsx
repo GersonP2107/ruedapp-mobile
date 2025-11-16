@@ -19,91 +19,51 @@ import { Colors } from '../../../../constants/Colors';
 import { handleAuthError, logError } from '../../../../utils/errorHandling';
 import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '../../../../utils/validation';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
-import { ForgotPasswordModal, LoadingScreen, ValidatedInput } from '../../components';
-import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
+import { LoadingScreen, ValidatedInput } from '../../components';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const { login, signInWithSupabase, isConnected, showNetworkWarning } = useAuth();
+  const { isConnected, showNetworkWarning, sendOtpLogin } = useAuth();
 
-  const handleSupabaseLogin = async () => {
+  // Nuevo: flujo de login con OTP (envía código y navega a verificación)
+  const handleLogin = async () => {
     setHasAttemptedSubmit(true);
-    
-    // Verificar conectividad
+
     if (!isConnected) {
       showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
-    
-    // Validar formulario
-    const formErrors = validateLoginForm(email, password);
+
+    const formErrors = validateLoginForm(email);
     setErrors(formErrors);
-    
     if (hasFormErrors(formErrors)) {
       return;
     }
 
     setIsLoading(true);
     try {
-      const { data, error } = await signInWithSupabase(email.trim(), password);
+      const { error } = await sendOtpLogin(email.trim());
       if (error) {
         const errorResponse = handleAuthError(error);
         Alert.alert(errorResponse.title, errorResponse.message);
       } else {
-        // Mostrar pantalla de carga antes de la redirección
-        setIsLoading(false);
         setShowLoading(true);
-        console.log('Login exitoso con Supabase');
+        router.push({
+          pathname: '/verify-otp',
+          params: {
+            email: email.trim(),
+            intent: 'login',
+          },
+        });
       }
-    } catch (error) {
-      logError('Supabase Login', error, { email });
-      const errorResponse = handleAuthError(error);
-      Alert.alert(errorResponse.title, errorResponse.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLegacyLogin = async () => {
-    setHasAttemptedSubmit(true);
-    
-    // Verificar conectividad
-    if (!isConnected) {
-      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
-      return;
-    }
-    
-    // Validar formulario
-    const formErrors = validateLoginForm(email, password);
-    setErrors(formErrors);
-    
-    if (hasFormErrors(formErrors)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const success = await login(email.trim(), password);
-      if (success) {
-        // Mostrar pantalla de carga antes de la redirección
-        setIsLoading(false);
-        setShowLoading(true);
-        console.log('Login exitoso con sistema anterior');
-      } else {
-        // El error específico se maneja en el AuthContext
-        const errorResponse = handleAuthError({ message: 'Invalid credentials' });
-        Alert.alert(errorResponse.title, errorResponse.message);
-      }
-    } catch (error) {
-      logError('Legacy Login', error, { email });
-      const errorResponse = handleAuthError(error);
+    } catch (err) {
+      logError('OTP Login', err, { email });
+      const errorResponse = handleAuthError(err);
       Alert.alert(errorResponse.title, errorResponse.message);
     } finally {
       setIsLoading(false);
@@ -121,22 +81,13 @@ export default function LoginScreen() {
     }
   };
 
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    if (hasAttemptedSubmit) {
-      setErrors(prev => ({
-        ...prev,
-        password: value ? undefined : 'La contraseña es requerida'
-      }));
-    }
-  };
 
   const handleLoadingComplete = () => {
     setShowLoading(false);
     // La navegación se maneja automáticamente en el AuthContext
   };
 
-  const isFormValid = isEmailValid && password.length > 0 && !hasFormErrors(errors);
+  const isFormValid = isEmailValid && !hasFormErrors(errors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -144,8 +95,8 @@ export default function LoginScreen() {
       
       {showLoading && (
         <LoadingScreen
-          title="¡BIENVENIDO!"
-          subtitle="Accediendo a tu cuenta..."
+          title="¡CÓDIGO ENVIADO!"
+          subtitle={`Revisa ${email.trim()} para continuar.`}
           duration={2500}
           onComplete={handleLoadingComplete}
         />
@@ -196,37 +147,16 @@ export default function LoginScreen() {
                 onValidationChange={setIsEmailValid}
                 showValidation={hasAttemptedSubmit}
               />
-              <ValidatedInput
-                placeholder="Ingresa tu contraseña"
-                value={password}
-                onChangeText={handlePasswordChange}
-                editable={!isLoading}
-                leftIcon="lock-closed-outline"
-                showPasswordToggle
-                error={errors.password}
-                showValidation={hasAttemptedSubmit}
-              />
-
-              <TouchableOpacity 
-                style={styles.forgotPassword}
-                onPress={() => setShowForgotPasswordModal(true)}
-                accessible={true}
-                accessibilityLabel="¿Olvidaste tu contraseña?"
-                accessibilityRole="button"
-                accessibilityHint="Abre el formulario para recuperar tu contraseña"
-              >
-                <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity 
                 style={[
                   styles.loginButton,
                   (isLoading || (!isFormValid && hasAttemptedSubmit)) && styles.loginButtonDisabled
                 ]}
-                onPress={handleSupabaseLogin}
+                onPress={handleLogin}
                 disabled={isLoading || (!isFormValid && hasAttemptedSubmit)}
                 accessible={true}
-                accessibilityLabel="Iniciar sesión"
+                accessibilityLabel="Enviar código de acceso"
                 accessibilityRole="button"
                 accessibilityState={{
                   disabled: isLoading || (!isFormValid && hasAttemptedSubmit),
@@ -236,10 +166,10 @@ export default function LoginScreen() {
                 {isLoading ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator color="#ffffff" size="small" />
-                    <Text style={styles.loadingText}>Iniciando sesión...</Text>
+                    <Text style={styles.loadingText}>Enviando código...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.loginButtonText}>Iniciar sesión</Text>
+                  <Text style={styles.loginButtonText}>Enviar código</Text>
                 )}
               </TouchableOpacity>
 
@@ -256,18 +186,10 @@ export default function LoginScreen() {
                   <Text style={styles.signUpLink}>Registrarse</Text>
                 </TouchableOpacity>
               </View>
-                {/* Social Buttons */}
-                <SocialSignInButtons />
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-      
-      <ForgotPasswordModal
-        visible={showForgotPasswordModal}
-        onClose={() => setShowForgotPasswordModal(false)}
-      />
-      
+      </KeyboardAvoidingView>    
     </SafeAreaView>
   );
 }

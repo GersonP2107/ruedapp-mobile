@@ -33,7 +33,8 @@ export default function SimpleVehicleRegistrationScreen() {
     { value: 'NIT', label: 'NIT' },
   ];
 
-  // Nuevos estados para documento
+  // Nuevos estados para registro de vehículo
+  const [fullName, setFullName] = useState('');
   const [documentType, setDocumentType] = useState('CC');
   const [documentNumber, setDocumentNumber] = useState('');
   const docTypes = SOAT_DOC_TYPES;
@@ -41,7 +42,7 @@ export default function SimpleVehicleRegistrationScreen() {
   const [docTypeSearch, setDocTypeSearch] = useState('');
   const [docTypeModalVisible, setDocTypeModalVisible] = useState(false);
 
-  const { addVehicleWithValidation } = useAuth();
+  const { addVehicleWithValidation, updateUserProfile } = useAuth();
 
   const formatPlate = (text: string) => {
     // Formatear placa automáticamente (ABC123)
@@ -74,6 +75,17 @@ export default function SimpleVehicleRegistrationScreen() {
   };
 
   const handleSubmit = async () => {
+    // Validar nombre y documento
+    if (!fullName.trim()) {
+      setError('Por favor ingrese su nombre');
+      return;
+    }
+
+    if (!documentNumber.trim()) {
+      setError(`Por favor ingrese su número de ${getDocumentTypeLabel(documentType)}`);
+      return;
+    }
+
     if (!licensePlate.trim()) {
       setError('Por favor ingrese la placa del vehículo');
       return;
@@ -88,6 +100,17 @@ export default function SimpleVehicleRegistrationScreen() {
     setError('');
 
     try {
+      const profileUpdateSuccess = await updateUserProfile({
+        full_name: fullName,
+        document_type: documentType,
+        document_number: documentNumber,
+      });
+      if (!profileUpdateSuccess) {
+        Alert.alert('Error de perfil', 'Error al actualizar su información. Intente más tarde.');
+        setIsLoading(false);
+        return;
+      }
+      
       const result = await addVehicleWithValidation(licensePlate);
 
       if (result.success) {
@@ -187,6 +210,18 @@ export default function SimpleVehicleRegistrationScreen() {
             {/* Form */}
 
             <View style={styles.form}>
+              <Text style={styles.label}>Nombre Completo</Text>
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Juan Pérez"
+                autoCapitalize="words"
+                accessibilityLabel="Nombre completo"
+                accessibilityHint="Ingresa tu nombre y apellido"
+                editable={!isLoading}
+              />
+
               <Text style={styles.label}>Placa del Vehículo</Text>
               <TextInput
                 style={[styles.input, error ? styles.inputError : null]}

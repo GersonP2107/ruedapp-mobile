@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus';
+import { supabase } from '../../../lib/supabase';
 import { NetworkStatusBanner } from '../../presentation/components/ui/NetworkStatusBanner';
 import { RuntValidationService, VehicleValidationResult } from '../services/RuntValidationService';
 
@@ -30,6 +30,8 @@ interface UserProfile {
   address?: string;
   city?: string;
   created_at: string;
+  document_type?: string; 
+  document_number?: string;
 }
 
 interface User {
@@ -54,17 +56,19 @@ interface AuthContextType {
   showNetworkWarning: (message: string) => void;
   showNetworkInfo: (message: string) => void;
   
+  // Nuevo método para enviar OTP solo para Login
+  sendOtpLogin: (email: string) => Promise<{ data: any; error: any }>;
+
   // Métodos de autenticación
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (fullName: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string) => Promise<boolean>;
+  register: (fullName: string, email: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
   
   // Métodos de Supabase
-  signUpWithSupabase: (email: string, password: string, options?: { full_name?: string; phone?: string }) => Promise<{ data: any; error: any }>;
-  signInWithSupabase: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signUpWithSupabase: (email: string, options?: { full_name?: string; phone?: string }) => Promise<{ data: any; error: any }>;
+  signInWithSupabase: (email: string ) => Promise<{ data: any; error: any }>;
   signOutFromSupabase: () => Promise<{ error: any }>;
-  
   // Métodos para datos del usuario
   fetchUserProfile: () => Promise<UserProfile | null>;
   updateUserProfile: (profileData: Partial<UserProfile>) => Promise<boolean>;
@@ -162,7 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: session.user.email || '',
         full_name: session.user.user_metadata?.full_name || '',
         phone: session.user.user_metadata?.phone,
-        created_at: session.user.created_at
+        created_at: session.user.created_at,
+        document_type: session.user.user_metadata?.document_type,
+        document_number: session.user.user_metadata?.document_number,
       };
       setUser(prev => prev ? { ...prev, profile } : null);
       return profile;
@@ -177,6 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: profileData.full_name,
           phone: profileData.phone,
+          document_type: profileData.document_type,
+          document_number: profileData.document_number,
         }
       });
       
@@ -322,11 +330,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Login legacy (usar signInWithSupabase)
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string): Promise<boolean> => {
     console.warn('⚠️ login legacy está obsoleto - usar signInWithSupabase() en su lugar');
     
     try {
-      const { data, error } = await signInWithSupabase(email, password);
+      const { data, error } = await signInWithSupabase(email);
       
       if (error) {
         console.error('Login error:', error.message);
@@ -345,11 +353,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Register legacy (usar signUpWithSupabase)
-  const register = async (fullName: string, email: string, password: string): Promise<boolean> => {
+  const register = async (fullName: string, email: string): Promise<boolean> => {
     console.warn('⚠️ register legacy está obsoleto - usar signUpWithSupabase() en su lugar');
     
     try {
-      const { data, error } = await signUpWithSupabase(email, password, { full_name: fullName });
+      const { data, error } = await signUpWithSupabase(email, { full_name: fullName });
       
       if (error) {
         console.error('Register error:', error.message);
@@ -368,7 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Métodos de Supabase
-  const signUpWithSupabase = async (email: string, password?: string, options?: { full_name?: string; phone?: string }) => {
+  const signUpWithSupabase = async (email: string, options?: { full_name?: string; phone?: string }) => {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -383,10 +391,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
-  const signInWithSupabase = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+  const signInWithSupabase = async (email: string) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      password,
+      options: {
+        emailRedirectTo: 'exp://192.168.1.13:8081',
+      },
     });
     return { data, error };
   };
@@ -416,7 +426,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: session.user.email || '',
               full_name: session.user.user_metadata?.full_name || '',
               phone: session.user.user_metadata?.phone,
-              created_at: session.user.created_at
+              created_at: session.user.created_at,
+              document_type: session.user.user_metadata?.document_type,
+              document_number: session.user.user_metadata?.document_number,
             }
           };
           setUser(userData);
@@ -540,6 +552,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendOtpLogin = async (email: string) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        // Importante: No crear usuario si no existe, solo para login
+        shouldCreateUser: false, 
+        emailRedirectTo: 'exp://192.168.1.13:8081',
+      },
+    });
+    return { data, error };
+};
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -555,6 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      sendOtpLogin,
       checkAuthStatus,
       signUpWithSupabase,
       signInWithSupabase,
@@ -589,3 +614,4 @@ export function useAuth() {
 }
 
 export type { AuthContextType, User, UserProfile, Vehicle };
+

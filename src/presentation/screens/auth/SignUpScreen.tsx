@@ -17,14 +17,11 @@ import { Colors } from '../../../../constants/Colors';
 import { FormErrors, validateEmail } from "../../../../utils/validation";
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { ValidatedInput } from '../../components';
-import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
 
 export default function SignUpScreen() {
-  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEmailValid, setIsEmailValid] = useState(false);
-  const [isNameValid, setIsNameValid] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const { isConnected, showNetworkWarning } = useAuth();
 
@@ -44,7 +41,7 @@ export default function SignUpScreen() {
     }
   };
 
-  const isFormValid = isEmailValid && isNameValid;
+  const isFormValid = isEmailValid;
 
   const handleProceedToVerification = () => {
     setHasAttemptedSubmit(true);
@@ -62,11 +59,12 @@ export default function SignUpScreen() {
       email: emailValidation.isValid ? undefined : emailValidation.message,
     };
     setErrors(formErrors);
-
-    router.push({
-      pathname: '/verify-otp',
-      params: { email: trimmedEmail },
-    });
+    if (emailValidation.isValid) {
+      router.push({
+        pathname: '/verify-otp',
+        params: { email: trimmedEmail },
+      });
+    }
   };
 
   return (
@@ -156,7 +154,6 @@ export default function SignUpScreen() {
                   <Text style={styles.loginLink}>Iniciar sesión</Text>
                 </TouchableOpacity>
               </View>
-              <SocialSignInButtons />
             </View>
           </View>
         </ScrollView>
