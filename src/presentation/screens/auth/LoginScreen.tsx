@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../../constants/Colors';
 import { handleAuthError, logError } from '../../../../utils/errorHandling';
-import { FormErrors, hasFormErrors, validateEmail, validateLoginForm } from '../../../../utils/validation';
+import { FormErrors, validateEmail } from '../../../../utils/validation';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { LoadingScreen, ValidatedInput } from '../../components';
 
@@ -38,13 +38,16 @@ export default function LoginScreen() {
       showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
-
-    const formErrors = validateLoginForm(email);
+    const emailValidation = validateEmail(email.trim());
+    const formErrors: FormErrors = {
+        email: emailValidation.isValid ? undefined : emailValidation.message,
+    };
     setErrors(formErrors);
-    if (hasFormErrors(formErrors)) {
-      return;
+    
+    // Usamos el resultado de validateEmail
+    if (!emailValidation.isValid) {
+        return;
     }
-
     setIsLoading(true);
     try {
       const { error } = await sendOtpLogin(email.trim());
@@ -87,7 +90,7 @@ export default function LoginScreen() {
     // La navegación se maneja automáticamente en el AuthContext
   };
 
-  const isFormValid = isEmailValid && !hasFormErrors(errors);
+  const isFormValid = isEmailValid;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -245,15 +248,6 @@ const styles = StyleSheet.create({
     gap: 1,
     paddingBottom: 40,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-  },
-  forgotPasswordText: {
-    color: 'black',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   loginButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 18,
@@ -303,59 +297,6 @@ const styles = StyleSheet.create({
     color: 'black',
     fontSize: 16,
     fontWeight: '600',
-  },
-  googleButton: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    marginBottom: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  googleButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  appleButton: {
-    backgroundColor: '#000000',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    marginBottom: 6,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  appleButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  buttonIcon: {
-    marginRight: 4,
   },
   dividerContainer: {
     flexDirection: 'row',
