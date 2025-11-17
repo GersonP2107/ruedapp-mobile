@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { router } from 'expo-router';
-import { Alert, Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
-import { OnboardingAnalytics } from '../../../infrastructure/services/OnboardingAnalytics';
+import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Linking, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { ensurePushToken } from '../../../infrastructure/notifications/config';
+import { OnboardingAnalytics } from '../../../infrastructure/services/OnboardingAnalytics';
 
 export default function PermissionsScreen() {
   const [notifStatus, setNotifStatus] = useState<'granted'|'denied'|'undetermined'>('undetermined');

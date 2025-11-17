@@ -1,7 +1,6 @@
-import { logError } from '@/utils/errorHandling';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,10 +14,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../../infrastructure/context/AuthContext';
-import { LoadingScreen, ValidatedInput } from '../../components';
 import { supabase } from '../../../../lib/supabase';
+import { logError } from '../../../../utils/errorHandling';
+import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { RuntVehicleData } from '../../../infrastructure/services/RuntSimulationService';
+import { LoadingScreen, ValidatedInput } from '../../components';
 
 // Tipo específico para errores del formulario de vehículos
 interface VehicleFormErrors {

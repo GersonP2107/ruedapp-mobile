@@ -282,3 +282,25 @@ export const logError = (context: string, error: any, additionalData?: any) => {
     console.groupEnd();
   }
 };
+
+// Métricas y utilidades
+export function logMetric(name: string, data?: Record<string, any>) {
+  try {
+    console.log(`[METRIC] ${name}`, data || {});
+  } catch (_) {}
+}
+
+export async function withTimeout<T>(promise: Promise<T>, ms: number, label = 'operation'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label.toUpperCase()}_TIMEOUT`)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}

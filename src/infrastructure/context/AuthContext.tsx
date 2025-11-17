@@ -377,29 +377,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Métodos de Supabase
   const signUpWithSupabase = async (email: string, options?: { full_name?: string; phone?: string }) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: 'exp://192.168.1.13:8081',
-        data: {
-          full_name: options?.full_name,
-          // No guardar contraseña en metadata; se establecerá luego en CreatePassword
-        },
-      },
-    });
-    return { data, error };
+      const { data, error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+              shouldCreateUser: true,
+              data: { full_name: options?.full_name },
+          },
+      });
+      return { data, error };
   };
-
+  
   const signInWithSupabase = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: 'exp://192.168.1.13:8081',
-      },
-    });
-    return { data, error };
+      const { data, error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {},
+      });
+      return { data, error };
   };
+  
 
   const signOutFromSupabase = async () => {
     const { error } = await supabase.auth.signOut();
@@ -556,9 +551,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        // Importante: No crear usuario si no existe, solo para login
         shouldCreateUser: false, 
-        emailRedirectTo: 'exp://192.168.1.13:8081',
       },
     });
     return { data, error };

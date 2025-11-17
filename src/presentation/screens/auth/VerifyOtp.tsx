@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../../lib/supabase';
-import { handleAuthError, logError } from '../../../../utils/errorHandling';
+import { handleAuthError, logError, logMetric, withTimeout } from '../../../../utils/errorHandling';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import OtpInput, { OtpInputRef } from '../../components/ui/OtpInput';
 
@@ -12,57 +13,66 @@ const RESEND_TIMEOUT = 60; // seconds
 export default function VerifyOTPScreen() {
   const router = useRouter();
   const { email, intent } = useLocalSearchParams<{ email: string, intent?: "login" | "signup" }>();
-  const { signUpWithSupabase, sendOtpLogin } = useAuth();
+  const { signUpWithSupabase, sendOtpLogin, isConnected, showNetworkWarning } = useAuth();
   const [loading, setLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [isSendingInitialOtp, setIsSendingInitialOtp] = useState(true);
+  const [codeValidityTimer, setCodeValidityTimer] = useState(0);
   const otpInputRef = useRef<OtpInputRef>(null);
+  const hasTriggeredInitialSend = useRef(false);
+  const CODE_VALIDITY_SECONDS = 300;
 
   const sendOtp = async (isResend = false) => {
-    if (!email) {
+    const emailStr = typeof email === 'string' ? email.trim() : '';
+    if (!emailStr) {
       Alert.alert('Error', 'Faltan datos del registro. Vuelve al inicio.');
       router.replace('/signup');
       return;
     }
-
+    if (!isConnected) {
+      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
+      return;
+    }
+    // No bloquear el envío inicial: eliminar `(isSendingInitialOtp && !isResend)`
+    if (loading) return;
     if (isResend && resendTimer > 0) return;
 
     try {
-      if (!isResend) {
-        setIsSendingInitialOtp(true);
-      }
+      if (!isResend) setIsSendingInitialOtp(true);
+
+      const startedAt = Date.now();
       let error;
       if (intent === 'login') {
-        ({ error } = await sendOtpLogin(email));
+        ({ error } = await withTimeout(sendOtpLogin(emailStr), 12000, 'send_otp'));
       } else {
-        ({ error } = await signUpWithSupabase(email));
+        ({ error } = await withTimeout(signUpWithSupabase(emailStr), 12000, 'send_otp'));
       }
       if (error) throw error;
+
+      logMetric('otp_send_success_verify_screen', { email: emailStr, intent, elapsedMs: Date.now() - startedAt });
 
       if (isResend) {
         Alert.alert('Código reenviado', 'Revisa tu correo y usa el nuevo código.');
       }
       setResendTimer(RESEND_TIMEOUT);
+      setCodeValidityTimer(CODE_VALIDITY_SECONDS);
       otpInputRef.current?.clear();
     } catch (err: any) {
       handleAuthError(err);
       logError(err, `VerifyOTPScreen.sendOtp (isResend: ${isResend})`);
       Alert.alert('Error', 'No pudimos enviar el código. Intenta más tarde.');
-      if (!isResend) {
-        // Si falla el envío inicial, volver a la pantalla de registro
-        router.back();
-      }
+      if (!isResend) router.back();
     } finally {
-      if (!isResend) {
-        setIsSendingInitialOtp(false);
-      }
+      if (!isResend) setIsSendingInitialOtp(false);
     }
   };
 
-  // Enviar OTP al cargar la pantalla
+  // Enviar OTP al cargar la pantalla (una sola vez)
   useEffect(() => {
-    sendOtp();
+    if (hasTriggeredInitialSend.current) return;
+    hasTriggeredInitialSend.current = true;
+    sendOtp(false);
   }, [email]);
 
   // Temporizador para reenviar
@@ -73,32 +83,54 @@ export default function VerifyOTPScreen() {
         setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => { if (interval) clearInterval(interval); };
   }, [resendTimer]);
+
+  // Temporizador de validez del código
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (codeValidityTimer > 0) {
+      interval = setInterval(() => {
+        setCodeValidityTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [codeValidityTimer]);
+
   const verify = async () => {
-    if (!email) {
+    const emailStr = typeof email === 'string' ? email.trim() : '';
+    if (!emailStr) {
       Alert.alert('Error', 'Faltan datos del registro. Vuelve al inicio.');
       router.replace('/signup');
+      return;
+    }
+    if (!isConnected) {
+      showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
 
     try {
       setLoading(true);
-      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: otpCode, type: 'email' });
+      const startedAt = Date.now();
+      const { error: verifyError } = await withTimeout(
+        supabase.auth.verifyOtp({ email: emailStr, token: otpCode, type: 'email' }),
+        12000,
+        'verify_otp'
+      );
       if (verifyError) throw verifyError;
 
-      if (intent === 'login') {
-        router.replace({
-          pathname: '/(tabs)',
-          params: { email },
-        });
-      } else {
-        router.replace({
-          pathname: '/vehicle-registration',
-          params: { email },
-        });
+      logMetric('otp_verify_success', { email: emailStr, intent, elapsedMs: Date.now() - startedAt });
+
+      try {
+        if (intent === 'login') {
+          router.replace({ pathname: '/(tabs)', params: { email: emailStr } });
+        } else {
+          router.replace({ pathname: '/vehicle-registration', params: { email: emailStr } });
+        }
+        logMetric('navigation_success', { to: intent === 'login' ? '/(tabs)' : '/vehicle-registration' });
+      } catch (navErr) {
+        logError(navErr as any, 'VerifyOTPScreen.navigation_failed');
+        logMetric('navigation_failed', { error: (navErr as any)?.message });
       }
     } catch (err: any) {
       handleAuthError(err);
@@ -111,6 +143,7 @@ export default function VerifyOTPScreen() {
   };
 
   const resend = async () => {
+    if (loading || isSendingInitialOtp || resendTimer > 0) return;
     sendOtp(true);
   };
 
@@ -142,6 +175,11 @@ export default function VerifyOTPScreen() {
         <Text style={styles.subtitle}>Ingresa el código</Text>
         <Text style={styles.caption}>
           Hemos enviado un código de 6 dígitos a <Text style={styles.emailText}>{email}</Text>
+        </Text>
+
+        {/* Indicador de validez del código */}
+        <Text style={[styles.caption, { marginTop: -16 }]}>
+          Código válido por {codeValidityTimer > 0 ? `${codeValidityTimer}s` : '0s'}
         </Text>
 
         <OtpInput onComplete={setOtpCode} disabled={loading} ref={otpInputRef} />

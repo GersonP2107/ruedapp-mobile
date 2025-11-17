@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../../constants/Colors';
-import { handleAuthError, logError } from '../../../../utils/errorHandling';
+import { handleAuthError, logError, logMetric, withTimeout } from '../../../../utils/errorHandling';
 import { FormErrors, validateEmail } from '../../../../utils/validation';
 import { useAuth } from '../../../infrastructure/context/AuthContext';
 import { LoadingScreen, ValidatedInput } from '../../components';
@@ -38,34 +38,39 @@ export default function LoginScreen() {
       showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
-    const emailValidation = validateEmail(email.trim());
+
+    const emailTrimmed = email.trim();
+    const emailValidation = validateEmail(emailTrimmed);
     const formErrors: FormErrors = {
-        email: emailValidation.isValid ? undefined : emailValidation.message,
+      email: emailValidation.isValid ? undefined : emailValidation.message,
     };
     setErrors(formErrors);
-    
-    // Usamos el resultado de validateEmail
-    if (!emailValidation.isValid) {
-        return;
-    }
+    if (!emailValidation.isValid) return;
+
     setIsLoading(true);
+    const startedAt = Date.now();
+
     try {
-      const { error } = await sendOtpLogin(email.trim());
+      const { error } = await withTimeout(sendOtpLogin(emailTrimmed), 12000, 'send_otp');
       if (error) {
         const errorResponse = handleAuthError(error);
         Alert.alert(errorResponse.title, errorResponse.message);
-      } else {
-        setShowLoading(true);
-        router.push({
-          pathname: '/verify-otp',
-          params: {
-            email: email.trim(),
-            intent: 'login',
-          },
-        });
+        logMetric('otp_send_failed', { email: emailTrimmed, elapsedMs: Date.now() - startedAt });
+        return;
       }
+
+      logMetric('otp_send_success', { email: emailTrimmed, elapsedMs: Date.now() - startedAt });
+
+      // Redirigir automáticamente a verificación tras confirmación de envío
+      router.push({
+        pathname: '/verify-otp',
+        params: {
+          email: emailTrimmed,
+          intent: 'login',
+        },
+      });
     } catch (err) {
-      logError('OTP Login', err, { email });
+      logError('OTP Login Timeout/Network', err as any, { email: emailTrimmed });
       const errorResponse = handleAuthError(err);
       Alert.alert(errorResponse.title, errorResponse.message);
     } finally {
