@@ -12,7 +12,7 @@ const RESEND_TIMEOUT = 60; // seconds
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { email, intent } = useLocalSearchParams<{ email: string, intent?: "login" | "signup" }>();
+  const { email, intent, skipInitialSend } = useLocalSearchParams<{ email: string, intent?: "login" | "signup", skipInitialSend?: string }>();
   const { signUpWithSupabase, sendOtpLogin, isConnected, showNetworkWarning } = useAuth();
   const [loading, setLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -34,7 +34,7 @@ export default function VerifyOTPScreen() {
       showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
-    // No bloquear el envío inicial: eliminar `(isSendingInitialOtp && !isResend)`
+    // No bloquear envío inicial por isSendingInitialOtp; solo evitar si estamos verificando código
     if (loading) return;
     if (isResend && resendTimer > 0) return;
 
@@ -58,22 +58,51 @@ export default function VerifyOTPScreen() {
       setResendTimer(RESEND_TIMEOUT);
       setCodeValidityTimer(CODE_VALIDITY_SECONDS);
       otpInputRef.current?.clear();
+      otpInputRef.current?.focus();
     } catch (err: any) {
-      handleAuthError(err);
-      logError(err, `VerifyOTPScreen.sendOtp (isResend: ${isResend})`);
-      Alert.alert('Error', 'No pudimos enviar el código. Intenta más tarde.');
-      if (!isResend) router.back();
+      const msg = String(err?.message || '');
+      // Manejo específico de rate limit de Supabase
+      if (msg.includes('For security purposes')) {
+        const match = msg.match(/after\s+(\d+)\s+seconds/);
+        const wait = match ? Number(match[1]) : RESEND_TIMEOUT;
+        setResendTimer(wait);
+        setCodeValidityTimer(CODE_VALIDITY_SECONDS);
+        setIsSendingInitialOtp(false);
+        logMetric('otp_rate_limited', { email: emailStr, intent, waitSeconds: wait });
+        Alert.alert('Espera para reenviar', `Podrás reenviar en ${wait} segundos.`);
+        // No regreses de pantalla en este caso
+      } else {
+        handleAuthError(err);
+        logError(err, `VerifyOTPScreen.sendOtp (isResend: ${isResend})`);
+        Alert.alert('Error', 'No pudimos enviar el código. Intenta más tarde.');
+        if (!isResend) router.back();
+      }
     } finally {
       if (!isResend) setIsSendingInitialOtp(false);
     }
   };
 
-  // Enviar OTP al cargar la pantalla (una sola vez)
+  // Enviar OTP al cargar la pantalla: omitir si viene de Login con envío previo
   useEffect(() => {
-    if (hasTriggeredInitialSend.current) return;
-    hasTriggeredInitialSend.current = true;
+    const shouldSkip = skipInitialSend === 'true';
+    if (shouldSkip) {
+      setIsSendingInitialOtp(false);
+      setResendTimer(RESEND_TIMEOUT);
+      setCodeValidityTimer(CODE_VALIDITY_SECONDS);
+      logMetric('otp_initial_send_skipped', { email, intent });
+      otpInputRef.current?.focus();
+      return;
+    }
     sendOtp(false);
-  }, [email]);
+  }, [email, skipInitialSend]);
+
+  // Enviar OTP al cargar la pantalla (una sola vez)
+  // Elimina este bloque duplicado que reenvía OTP una vez (causaba rate-limit):
+  // useEffect(() => {
+  //   if (hasTriggeredInitialSend.current) return;
+  //   hasTriggeredInitialSend.current = true;
+  //   sendOtp(false);
+  // }, [email]);
 
   // Temporizador para reenviar
   useEffect(() => {
@@ -182,7 +211,7 @@ export default function VerifyOTPScreen() {
           Código válido por {codeValidityTimer > 0 ? `${codeValidityTimer}s` : '0s'}
         </Text>
 
-        <OtpInput onComplete={setOtpCode} disabled={loading} ref={otpInputRef} />
+        <OtpInput onComplete={setOtpCode} disabled={loading} ref={otpInputRef} autoFillFromClipboard />
 
         <TouchableOpacity
           style={[styles.button, (!otpCode || otpCode.length < 6) && styles.buttonDisabled]}

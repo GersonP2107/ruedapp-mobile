@@ -67,6 +67,7 @@ export default function LoginScreen() {
         params: {
           email: emailTrimmed,
           intent: 'login',
+          skipInitialSend: 'true',
         },
       });
     } catch (err) {

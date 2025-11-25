@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../../constants/Colors';
-import SocialSignInButtons from '../../components/ui/SocialSignInButtons';
 
 export default function WelcomeScreen() {
   return (
@@ -58,7 +57,6 @@ export default function WelcomeScreen() {
                 >
                   <Text style={styles.signUpButtonText}>Registrarse gratis</Text>
                 </TouchableOpacity>
-                <SocialSignInButtons/>
                 <TouchableOpacity 
                   style={styles.loginButton}
                   onPress={() => router.push('./login')}
