@@ -20,6 +20,78 @@ interface Vehicle {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+
+  // Información del Propietario (RUNT)
+  owner_full_name?: string;
+  owner_document_type?: string;
+  owner_document_number?: string;
+
+  // Información del Servicio y Clasificación
+  service_type?: string;
+  vehicle_class?: string;
+  line?: string;
+  body_type?: string;
+  classification?: string;
+
+  // Especificaciones Técnicas
+  cylinder_capacity?: string;
+  fuel_type?: string;
+  total_passengers?: number;
+  seated_passengers?: string;
+  doors?: string;
+  number_of_axles?: string;
+  gross_weight?: string;
+  load_capacity?: string;
+
+  // Números de Identificación
+  serial_number?: string;
+  engine_number?: string;
+  chassis_number?: string;
+  vin?: string;
+
+  // Información de Regrabado
+  is_engine_re_engraved?: string;
+  is_chassis_re_engraved?: string;
+  is_serial_re_engraved?: string;
+  is_vin_re_engraved?: string;
+  re_engraved_chassis_number?: string;
+  re_engraved_engine_number?: string;
+  re_engraved_serial_number?: string;
+  re_engraved_vin_number?: string;
+
+  // Estado y Documentación
+  vehicle_status?: string;
+  registration_date?: string;
+  days_registered?: string;
+  liens?: string;
+  encumbrances?: string;
+  transit_organization?: string;
+  is_antique_classic?: string;
+  is_teaching_vehicle?: string;
+  is_repowered?: string;
+
+  // Información de Importación
+  import_status?: number;
+  import_license_issue_date?: string;
+  import_license_expiry_date?: string;
+
+  // Validación y Seguridad
+  security_state?: string;
+  dian_validation?: string;
+  dian_validation_verified?: boolean;
+
+  // Campos Adicionales del RUNT
+  show_requests?: string;
+  machinery_type?: string;
+  tariff_subheading?: string;
+  registration_date_matricula?: string;
+  registration_card?: string;
+  identification_number?: string;
+  vehicle_id_automotor?: number;
+  country_name?: string;
+  license_number?: string;
+  service_type_id?: number;
+  vehicle_class_id?: number;
 }
 
 interface UserProfile {
@@ -30,7 +102,7 @@ interface UserProfile {
   address?: string;
   city?: string;
   created_at: string;
-  document_type?: string; 
+  document_type?: string;
   document_number?: string;
 }
 
@@ -49,13 +121,13 @@ interface AuthContextType {
   isLoading: boolean;
   vehicles: Vehicle[];
   activeVehicle: Vehicle | null;
-  
+
   // Estado de red
   isConnected: boolean;
   showNetworkError: (message: string) => void;
   showNetworkWarning: (message: string) => void;
   showNetworkInfo: (message: string) => void;
-  
+
   // Nuevo método para enviar OTP solo para Login
   sendOtpLogin: (email: string) => Promise<{ data: any; error: any }>;
 
@@ -64,25 +136,25 @@ interface AuthContextType {
   register: (fullName: string, email: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
-  
+
   // Métodos de Supabase
   signUpWithSupabase: (email: string, options?: { full_name?: string; phone?: string }) => Promise<{ data: any; error: any }>;
-  signInWithSupabase: (email: string ) => Promise<{ data: any; error: any }>;
+  signInWithSupabase: (email: string) => Promise<{ data: any; error: any }>;
   signOutFromSupabase: () => Promise<{ error: any }>;
   // Métodos para datos del usuario
   fetchUserProfile: () => Promise<UserProfile | null>;
   updateUserProfile: (profileData: Partial<UserProfile>) => Promise<boolean>;
-  
+
   // Métodos para vehículos
   fetchUserVehicles: () => Promise<Vehicle[]>;
   addVehicle: (vehicleData: Omit<Vehicle, 'id' | 'user_id' | 'is_active'>) => Promise<boolean>;
   updateVehicle: (vehicleId: string, vehicleData: Partial<Vehicle>) => Promise<boolean>;
   deleteVehicle: (vehicleId: string) => Promise<boolean>;
   setActiveVehicle: (vehicle: Vehicle | null) => void;
-  
+
   // Método helper para llamadas autenticadas
   makeAuthenticatedRequest: (url: string, options?: RequestInit) => Promise<Response>;
-  
+
   // Nuevo método para registro de vehículo con validación automática
   addVehicleWithValidation: (licensePlate: string) => Promise<{
     success: boolean;
@@ -100,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [activeVehicle, setActiveVehicle] = useState<Vehicle | null>(null);
-  
+
   // Hook de estado de red
   const {
     isConnected,
@@ -117,11 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
     console.warn('⚠️ makeAuthenticatedRequest está obsoleto - usar Supabase en su lugar');
     const token = user?.token || await AsyncStorage.getItem('userToken');
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
@@ -131,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...options.headers,
         },
       });
-      
+
       clearTimeout(timeoutId);
       return response;
     } catch (error: any) {
@@ -187,12 +259,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           document_number: profileData.document_number,
         }
       });
-      
+
       if (error) {
         console.error('Error updating user profile with Supabase:', error);
         return false;
       }
-      
+
       if (data.user) {
         const updatedProfile: UserProfile = {
           id: data.user.id,
@@ -203,7 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setUser(prev => prev ? { ...prev, profile: updatedProfile } : null);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error updating user profile:', error);
@@ -214,7 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Obtener vehículos del usuario
   const fetchUserVehicles = async (): Promise<Vehicle[]> => {
     if (!supabaseUser) return [];
-    
+
     try {
       const { data, error } = await supabase
         .from('vehicles')
@@ -224,7 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       const vehicleList = data || [];
       setVehicles(vehicleList);
       return vehicleList;
@@ -237,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Agregar vehículo
   const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'user_id' | 'is_active'>): Promise<boolean> => {
     if (!supabaseUser) return false;
-    
+
     try {
       const { data, error } = await supabase
         .from('vehicles')
@@ -250,7 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) throw error;
-      
+
       await fetchUserVehicles();
       return true;
     } catch (error) {
@@ -262,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Actualizar vehículo
   const updateVehicle = async (vehicleId: string, vehicleData: Partial<Vehicle>): Promise<boolean> => {
     if (!supabaseUser) return false;
-    
+
     try {
       const { error } = await supabase
         .from('vehicles')
@@ -271,7 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', supabaseUser.id);
 
       if (error) throw error;
-      
+
       await fetchUserVehicles();
       return true;
     } catch (error) {
@@ -283,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Eliminar vehículo (soft delete)
   const deleteVehicle = async (vehicleId: string): Promise<boolean> => {
     if (!supabaseUser) return false;
-    
+
     try {
       const { error } = await supabase
         .from('vehicles')
@@ -292,7 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', supabaseUser.id);
 
       if (error) throw error;
-      
+
       await fetchUserVehicles();
       return true;
     } catch (error) {
@@ -316,7 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const userData = await AsyncStorage.getItem('userData');
-      
+
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser({ ...parsedUser, token });
@@ -332,19 +404,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login legacy (usar signInWithSupabase)
   const login = async (email: string): Promise<boolean> => {
     console.warn('⚠️ login legacy está obsoleto - usar signInWithSupabase() en su lugar');
-    
+
     try {
       const { data, error } = await signInWithSupabase(email);
-      
+
       if (error) {
         console.error('Login error:', error.message);
         return false;
       }
-      
+
       if (data.user && data.session) {
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -355,19 +427,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Register legacy (usar signUpWithSupabase)
   const register = async (fullName: string, email: string): Promise<boolean> => {
     console.warn('⚠️ register legacy está obsoleto - usar signUpWithSupabase() en su lugar');
-    
+
     try {
       const { data, error } = await signUpWithSupabase(email, { full_name: fullName });
-      
+
       if (error) {
         console.error('Register error:', error.message);
         return false;
       }
-      
+
       if (data.user) {
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Register error:', error);
@@ -377,24 +449,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Métodos de Supabase
   const signUpWithSupabase = async (email: string, options?: { full_name?: string; phone?: string }) => {
-      const { data, error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-              shouldCreateUser: true,
-              data: { full_name: options?.full_name },
-          },
-      });
-      return { data, error };
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        data: { full_name: options?.full_name },
+      },
+    });
+    return { data, error };
   };
-  
+
   const signInWithSupabase = async (email: string) => {
-      const { data, error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {},
-      });
-      return { data, error };
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {},
+    });
+    return { data, error };
   };
-  
+
 
   const signOutFromSupabase = async () => {
     const { error } = await supabase.auth.signOut();
@@ -403,13 +475,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkAuthStatus();
-    
+
     // Configurar listener de Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setSupabaseUser(session?.user ?? null);
-        
+
         if (session?.user) {
           const userData: User = {
             id: session.user.id,
@@ -439,7 +511,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setSupabaseUser(session?.user ?? null);
-      
+
       if (session?.user) {
         const userData: User = {
           id: session.user.id,
@@ -482,9 +554,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Extraer información del documento (necesitarás agregar estos campos al perfil)
       const userDocument = RuntValidationService.extractDocumentFromProfile(profile);
       if (!userDocument) {
-        return { 
-          success: false, 
-          error: 'Información de documento incompleta. Complete su perfil primero.' 
+        return {
+          success: false,
+          error: 'Información de documento incompleta. Complete su perfil primero.'
         };
       }
 
@@ -504,32 +576,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Si la validación es exitosa, registrar el vehículo automáticamente
       const vehicleData = validationResult.vehicleData!;
-      
+
       // Obtener ID del tipo de vehículo
-      const vehicleTypeId = await RuntValidationService.getVehicleTypeId(vehicleData.vehicleType);
-      if (!vehicleTypeId) {
-        return { success: false, error: 'Tipo de vehículo no válido' };
-      }
-
-      // Crear el vehículo en la base de datos
-      const { data, error } = await supabase
-        .from('vehicles')
-        .insert([{
-          user_id: supabaseUser.id,
-          vehicle_type_id: vehicleTypeId,
-          license_plate: licensePlate.toUpperCase(),
-          brand: vehicleData.brand,
-          model: vehicleData.model,
-          year: vehicleData.year,
-          color: vehicleData.color,
-          mileage: 0, // Valor por defecto
-          is_active: true
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
       // Actualizar lista de vehículos
       await fetchUserVehicles();
 
@@ -537,7 +585,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: true,
         validationResult
       };
-    
+
     } catch (error: any) {
       console.error('Error en addVehicleWithValidation:', error);
       return {
@@ -551,11 +599,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        shouldCreateUser: false, 
+        shouldCreateUser: false,
       },
     });
     return { data, error };
-};
+  };
 
   return (
     <AuthContext.Provider value={{

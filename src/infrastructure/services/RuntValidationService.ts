@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 export interface VehicleValidationResult {
   isValid: boolean;
   vehicleData?: {
+    // Campos básicos
     brand: string;
     model: string;
     year: number;
@@ -10,8 +11,77 @@ export interface VehicleValidationResult {
     vehicleType: string;
     ownerName: string;
     ownerDocument: string;
+
+    // Documentos
     soatExpiry?: string;
     rtmExpiry?: string;
+
+    // Clasificación y servicio
+    serviceType?: string;
+    vehicleClass?: string;
+    line?: string;
+    bodyType?: string;
+    classification?: string;
+
+    // Especificaciones técnicas
+    cylinderCapacity?: string;
+    fuelType?: string;
+    totalPassengers?: number;
+    seatedPassengers?: string;
+    doors?: string;
+    numberOfAxles?: string;
+    grossWeight?: string;
+    loadCapacity?: string;
+
+    // Números de identificación
+    serialNumber?: string;
+    engineNumber?: string;
+    chassisNumber?: string;
+    vin?: string;
+
+    // Información de regrabado
+    isEngineReEngraved?: string;
+    isChassisReEngraved?: string;
+    isSerialReEngraved?: string;
+    isVinReEngraved?: string;
+    reEngravingChassisNumber?: string;
+    reEngravingEngineNumber?: string;
+    reEngravingSerialNumber?: string;
+    reEngravingVinNumber?: string;
+
+    // Estado y documentación
+    vehicleStatus?: string;
+    registrationDate?: string;
+    daysRegistered?: string;
+    liens?: string;
+    encumbrances?: string;
+    transitOrganization?: string;
+    isAntiqueClassic?: string;
+    isTeachingVehicle?: string;
+    isRepowered?: string;
+
+    // Importación
+    importStatus?: number;
+    importLicenseIssueDate?: string;
+    importLicenseExpiryDate?: string;
+
+    // Validación y seguridad
+    securityState?: string;
+    dianValidation?: string;
+    dianValidationVerified?: boolean;
+
+    // Campos adicionales
+    showRequests?: string;
+    machineryType?: string;
+    tariffSubheading?: string;
+    registrationDateMatricula?: string;
+    registrationCard?: string;
+    identificationNumber?: string;
+    vehicleIdAutomotor?: number;
+    countryName?: string;
+    licenseNumber?: string;
+    serviceTypeId?: number;
+    vehicleClassId?: number;
   };
   error?: string;
   errorCode?: 'VEHICLE_NOT_FOUND' | 'OWNER_MISMATCH' | 'INVALID_PLATE' | 'INVALID_DOCUMENT' | 'SYSTEM_ERROR';
@@ -28,7 +98,7 @@ export interface UserDocumentInfo {
  * Funciona de manera transparente para el usuario
  */
 export class RuntValidationService {
-  
+
   /**
    * Valida automáticamente un vehículo contra el RUNT
    * @param licensePlate Placa del vehículo
@@ -36,7 +106,7 @@ export class RuntValidationService {
    * @returns Resultado de la validación con datos del vehículo
    */
   static async validateVehicleOwnership(
-    licensePlate: string, 
+    licensePlate: string,
     userDocument: UserDocumentInfo
   ): Promise<VehicleValidationResult> {
     try {
@@ -57,50 +127,19 @@ export class RuntValidationService {
         };
       }
 
-      // Simular delay de consulta real
-      await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+      // Consultar API real del RUNT
+      const apiResponse = await this.fetchRuntData(licensePlate, userDocument);
 
-      // Consultar datos en la tabla de simulación del RUNT
-      const { data, error } = await supabase
-        .from('runt_vehicle_data')
-        .select('*')
-        .eq('license_plate', licensePlate.toUpperCase())
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return {
-            isValid: false,
-            error: 'Vehículo no encontrado en el RUNT',
-            errorCode: 'VEHICLE_NOT_FOUND'
-          };
-        }
-        throw error;
-      }
-
-      // Verificar que el propietario coincida
-      const isOwnerMatch = this.verifyOwnership(data, userDocument);
-      
-      if (!isOwnerMatch) {
+      if (!apiResponse) {
         return {
           isValid: false,
-          error: 'El vehículo no está registrado a nombre del usuario',
-          errorCode: 'OWNER_MISMATCH'
+          error: 'Vehículo no encontrado en el RUNT o servicio no disponible',
+          errorCode: 'VEHICLE_NOT_FOUND'
         };
       }
 
       // Mapear datos del RUNT a nuestro formato
-      const vehicleData = {
-        brand: data.vehicle_brand,
-        model: data.vehicle_model,
-        year: data.vehicle_year,
-        color: data.vehicle_color,
-        vehicleType: this.mapVehicleType(data.vehicle_type),
-        ownerName: data.owner_full_name,
-        ownerDocument: data.owner_document_number,
-        soatExpiry: data.soat_expiry_date,
-        rtmExpiry: data.rtm_expiry_date,
-      };
+      const vehicleData = this.mapApiResponseToVehicleData(apiResponse);
 
       return {
         isValid: true,
@@ -111,27 +150,92 @@ export class RuntValidationService {
       console.error('Error en validación RUNT:', error);
       return {
         isValid: false,
-        error: 'Error del sistema. Intente nuevamente.',
+        error: 'Error de conexión con el servicio RUNT. Intente nuevamente.',
         errorCode: 'SYSTEM_ERROR'
       };
     }
+  }
+
+  private static async fetchRuntData(licensePlate: string, userDocument: UserDocumentInfo): Promise<any> {
+    try {
+      const documentTypeSlug = this.getDocumentTypeSlug(userDocument.documentType);
+      const compositeDocumentNumber = `${userDocument.documentNumber}/${licensePlate.toUpperCase()}`;
+
+      const response = await fetch('http://localhost:8000/api/v1.0/requests/runt-vehicle-co/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          document_type: documentTypeSlug,
+          document_number: compositeDocumentNumber
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('RUNT API Error:', response.status, await response.text());
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fetch RUNT Data Error:', error);
+      throw error;
+    }
+  }
+
+  private static getDocumentTypeSlug(type: string): string {
+    const mapping: { [key: string]: string } = {
+      'CC': 'cedula',
+      'TI': 'tarjeta_identidad',
+      'CE': 'cedula_extranjeria',
+      'NIT': 'nit',
+      'PA': 'pasaporte',
+      'PPT': 'permiso_proteccion_temporal',
+      'RC': 'registro_civil',
+      'CD': 'carnet_diplomatico',
+    };
+    return mapping[type] || 'cedula';
+  }
+
+  private static mapApiResponseToVehicleData(data: any): any {
+    const info = data.infoVehiculo || data;
+
+    return {
+      brand: info.marca || info.brand || '',
+      model: info.linea || info.model || '',
+      year: parseInt(info.modelo || info.year || '0'),
+      color: info.color || '',
+      vehicleType: this.mapVehicleType(info.claseVehiculo || info.vehicleType || ''),
+      ownerName: info.propietario || '',
+      ownerDocument: info.nroDocumento || '',
+
+      soatExpiry: info.soatFechaVencimiento,
+      rtmExpiry: info.rtmFechaVencimiento,
+      cylinderCapacity: info.cilindraje,
+      fuelType: info.tipoCombustible,
+      engineNumber: info.nroMotor,
+      chassisNumber: info.nroChasis,
+      vin: info.nroVin,
+      vehicleClass: info.claseVehiculo,
+      serviceType: info.tipoServicio,
+      bodyType: info.tipoCarroceria,
+      totalPassengers: info.nroPasajeros,
+    };
   }
 
   /**
    * Verifica que el propietario del vehículo coincida con el usuario
    */
   private static verifyOwnership(runtData: any, userDocument: UserDocumentInfo): boolean {
-    // Verificar tipo de documento (debe ser CC para Colombia)
     if (userDocument.documentType !== 'CC' || runtData.owner_document_type !== 'CC') {
       return false;
     }
 
-    // Verificar número de documento
     if (runtData.owner_document_number !== userDocument.documentNumber) {
       return false;
     }
 
-    // Verificar similitud de nombres (tolerante a diferencias menores)
     return this.compareNames(runtData.owner_full_name, userDocument.fullName);
   }
 
@@ -139,31 +243,29 @@ export class RuntValidationService {
    * Compara nombres con tolerancia a diferencias menores
    */
   private static compareNames(runtName: string, userName: string): boolean {
-    const normalize = (name: string) => 
+    const normalize = (name: string) =>
       name.toLowerCase()
-          .replace(/[áàäâ]/g, 'a')
-          .replace(/[éèëê]/g, 'e')
-          .replace(/[íìïî]/g, 'i')
-          .replace(/[óòöô]/g, 'o')
-          .replace(/[úùüû]/g, 'u')
-          .replace(/ñ/g, 'n')
-          .replace(/[^a-z\s]/g, '')
-          .trim();
+        .replace(/[áàäâ]/g, 'a')
+        .replace(/[éèëê]/g, 'e')
+        .replace(/[íìïî]/g, 'i')
+        .replace(/[óòöô]/g, 'o')
+        .replace(/[úùüû]/g, 'u')
+        .replace(/ñ/g, 'n')
+        .replace(/[^a-z\s]/g, '')
+        .trim();
 
     const normalizedRunt = normalize(runtName);
     const normalizedUser = normalize(userName);
 
-    // Verificar coincidencia exacta
     if (normalizedRunt === normalizedUser) {
       return true;
     }
 
-    // Verificar si todos los nombres del usuario están en el RUNT
     const userWords = normalizedUser.split(/\s+/);
     const runtWords = normalizedRunt.split(/\s+/);
 
-    return userWords.every(word => 
-      word.length > 2 && runtWords.some(runtWord => 
+    return userWords.every(word =>
+      word.length > 2 && runtWords.some(runtWord =>
         runtWord.includes(word) || word.includes(runtWord)
       )
     );
@@ -235,8 +337,6 @@ export class RuntValidationService {
    * Extrae el número de documento del perfil del usuario
    */
   static extractDocumentFromProfile(profile: any): UserDocumentInfo | null {
-    // Aquí puedes implementar la lógica para extraer el documento del perfil
-    // Por ahora, asumimos que está en el campo 'document_number' y 'document_type'
     if (profile.document_number && profile.document_type) {
       return {
         documentType: profile.document_type,

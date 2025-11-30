@@ -1,6 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 
 export interface RuntVehicleData {
+  // Información básica de la placa y propietario
   licensePlate: string;
   ownerDocumentType: string;
   ownerDocumentNumber: string;
@@ -8,26 +9,89 @@ export interface RuntVehicleData {
   ownerPhone?: string;
   ownerAddress?: string;
   ownerCity?: string;
-  
+
+  // Información básica del vehículo
   vehicleBrand: string;
   vehicleModel: string;
   vehicleYear: number;
   vehicleColor: string;
   vehicleType: string;
+
+  // Clasificación y servicio
   vehicleClass?: string;
   vehicleService?: string;
+  classification?: string;
+  line?: string;
+  bodyType?: string;
+
+  // Números de identificación
   vehicleVin?: string;
   vehicleEngineNumber?: string;
-  vehicleCylinderCapacity?: number;
+  vehicleSerialNumber?: string;
+  vehicleChassisNumber?: string;
+
+  // Especificaciones técnicas
+  vehicleCylinderCapacity?: string;
   vehicleFuelType?: string;
-  
+  totalPassengers?: number;
+  seatedPassengers?: string;
+  doors?: string;
+  numberOfAxles?: string;
+  grossWeight?: string;
+  loadCapacity?: string;
+
+  // Información de regrabado
+  isEngineReEngraved?: string;
+  isChassisReEngraved?: string;
+  isSerialReEngraved?: string;
+  isVinReEngraved?: string;
+  reEngravingChassisNumber?: string;
+  reEngravingEngineNumber?: string;
+  reEngravingSerialNumber?: string;
+  reEngravingVinNumber?: string;
+
+  // Estado y documentación
+  vehicleStatus?: string;
+  registrationDate?: string;
+  daysRegistered?: string;
+  liens?: string;
+  encumbrances?: string;
+  transitOrganization?: string;
+  isAntiqueClassic?: string;
+  isTeachingVehicle?: string;
+  isRepowered?: string;
+
+  // Importación
+  importStatus?: number;
+  importLicenseIssueDate?: string;
+  importLicenseExpiryDate?: string;
+
+  // Validación y seguridad
+  securityState?: string;
+  dianValidation?: string;
+  dianValidationVerified?: boolean;
+
+  // Campos adicionales
+  showRequests?: string;
+  machineryType?: string;
+  tariffSubheading?: string;
+  registrationDateMatricula?: string;
+  registrationCard?: string;
+  identificationNumber?: string;
+  vehicleIdAutomotor?: number;
+  countryName?: string;
+  licenseNumber?: string;
+  serviceTypeId?: number;
+  vehicleClassId?: number;
+
+  // Documentos (SOAT, RTM) - mantener compatibilidad
   soatCompany?: string;
   soatPolicyNumber?: string;
   soatExpiryDate?: string;
   rtmExpiryDate?: string;
   rtmCenter?: string;
-  
-  vehicleStatus?: string;
+
+  // Restricciones - mantener compatibilidad
   hasRestrictions?: boolean;
   restrictionsDescription?: string;
 }
@@ -50,7 +114,7 @@ export interface RuntApiResponse {
  * En producción, este servicio se conectaría a la API real de Mis Datos
  */
 export class RuntSimulationService {
-  
+
   /**
    * Simula la consulta a la API del RUNT
    * @param params Parámetros de consulta (placa, tipo y número de documento)
@@ -60,7 +124,7 @@ export class RuntSimulationService {
     try {
       // Simular delay de red (como una API real)
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-      
+
       const { data, error } = await supabase
         .from('runt_vehicle_data')
         .select('*')
@@ -89,7 +153,7 @@ export class RuntSimulationService {
         ownerPhone: data.owner_phone,
         ownerAddress: data.owner_address,
         ownerCity: data.owner_city,
-        
+
         vehicleBrand: data.vehicle_brand,
         vehicleModel: data.vehicle_model,
         vehicleYear: data.vehicle_year,
@@ -101,13 +165,13 @@ export class RuntSimulationService {
         vehicleEngineNumber: data.vehicle_engine_number,
         vehicleCylinderCapacity: data.vehicle_cylinder_capacity,
         vehicleFuelType: data.vehicle_fuel_type,
-        
+
         soatCompany: data.soat_company,
         soatPolicyNumber: data.soat_policy_number,
         soatExpiryDate: data.soat_expiry_date,
         rtmExpiryDate: data.rtm_expiry_date,
         rtmCenter: data.rtm_center,
-        
+
         vehicleStatus: data.vehicle_status,
         hasRestrictions: data.has_restrictions,
         restrictionsDescription: data.restrictions_description
@@ -150,7 +214,7 @@ export class RuntSimulationService {
   /**
    * Obtiene los tipos de documento válidos
    */
-  static getValidDocumentTypes(): Array<{value: string, label: string}> {
+  static getValidDocumentTypes(): Array<{ value: string, label: string }> {
     return [
       { value: 'CC', label: 'Cédula de Ciudadanía' },
       { value: 'CE', label: 'Cédula de Extranjería' },

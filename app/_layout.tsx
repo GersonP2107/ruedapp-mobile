@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import '../global.css';
 import '../src/infrastructure/notifications/config';
 
 import { useColorScheme } from 'react-native';

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../../lib/supabase';
 import { handleAuthError, logError, logMetric, withTimeout } from '../../../../utils/errorHandling';
@@ -12,7 +13,7 @@ const RESEND_TIMEOUT = 60; // seconds
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { email, intent, skipInitialSend } = useLocalSearchParams<{ email: string, intent?: "login" | "signup", skipInitialSend?: string }>();
+  const { email, mode, skipInitialSend } = useLocalSearchParams<{ email: string, mode?: "login" | "signup", skipInitialSend?: string }>();
   const { signUpWithSupabase, sendOtpLogin, isConnected, showNetworkWarning } = useAuth();
   const [loading, setLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -20,8 +21,45 @@ export default function VerifyOTPScreen() {
   const [isSendingInitialOtp, setIsSendingInitialOtp] = useState(true);
   const [codeValidityTimer, setCodeValidityTimer] = useState(0);
   const otpInputRef = useRef<OtpInputRef>(null);
-  const hasTriggeredInitialSend = useRef(false);
   const CODE_VALIDITY_SECONDS = 300;
+
+  // Animaciones
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!isSendingInitialOtp) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Animación de pulso para el icono
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isSendingInitialOtp]);
 
   const sendOtp = async (isResend = false) => {
     const emailStr = typeof email === 'string' ? email.trim() : '';
@@ -34,7 +72,6 @@ export default function VerifyOTPScreen() {
       showNetworkWarning('Sin conexión a internet. Verifica tu conexión y vuelve a intentar.');
       return;
     }
-    // No bloquear envío inicial por isSendingInitialOtp; solo evitar si estamos verificando código
     if (loading) return;
     if (isResend && resendTimer > 0) return;
 
@@ -43,14 +80,14 @@ export default function VerifyOTPScreen() {
 
       const startedAt = Date.now();
       let error;
-      if (intent === 'login') {
+      if (mode === 'login') {
         ({ error } = await withTimeout(sendOtpLogin(emailStr), 12000, 'send_otp'));
       } else {
         ({ error } = await withTimeout(signUpWithSupabase(emailStr), 12000, 'send_otp'));
       }
       if (error) throw error;
 
-      logMetric('otp_send_success_verify_screen', { email: emailStr, intent, elapsedMs: Date.now() - startedAt });
+      logMetric('otp_send_success_verify_screen', { email: emailStr, mode, elapsedMs: Date.now() - startedAt });
 
       if (isResend) {
         Alert.alert('Código reenviado', 'Revisa tu correo y usa el nuevo código.');
@@ -61,16 +98,21 @@ export default function VerifyOTPScreen() {
       otpInputRef.current?.focus();
     } catch (err: any) {
       const msg = String(err?.message || '');
-      // Manejo específico de rate limit de Supabase
       if (msg.includes('For security purposes')) {
         const match = msg.match(/after\s+(\d+)\s+seconds/);
         const wait = match ? Number(match[1]) : RESEND_TIMEOUT;
         setResendTimer(wait);
         setCodeValidityTimer(CODE_VALIDITY_SECONDS);
         setIsSendingInitialOtp(false);
-        logMetric('otp_rate_limited', { email: emailStr, intent, waitSeconds: wait });
+        logMetric('otp_rate_limited', { email: emailStr, mode, waitSeconds: wait });
         Alert.alert('Espera para reenviar', `Podrás reenviar en ${wait} segundos.`);
-        // No regreses de pantalla en este caso
+      } else if (msg.includes('Error sending magic link email')) {
+        logError(err, `VerifyOTPScreen.sendOtp (Supabase Email Error)`);
+        Alert.alert(
+          'Problema de envío',
+          'El servicio de correos está saturado o no configurado. Por favor intenta más tarde o contacta soporte.'
+        );
+        if (!isResend) router.back();
       } else {
         handleAuthError(err);
         logError(err, `VerifyOTPScreen.sendOtp (isResend: ${isResend})`);
@@ -82,29 +124,19 @@ export default function VerifyOTPScreen() {
     }
   };
 
-  // Enviar OTP al cargar la pantalla: omitir si viene de Login con envío previo
   useEffect(() => {
     const shouldSkip = skipInitialSend === 'true';
     if (shouldSkip) {
       setIsSendingInitialOtp(false);
       setResendTimer(RESEND_TIMEOUT);
       setCodeValidityTimer(CODE_VALIDITY_SECONDS);
-      logMetric('otp_initial_send_skipped', { email, intent });
+      logMetric('otp_initial_send_skipped', { email, mode });
       otpInputRef.current?.focus();
       return;
     }
     sendOtp(false);
   }, [email, skipInitialSend]);
 
-  // Enviar OTP al cargar la pantalla (una sola vez)
-  // Elimina este bloque duplicado que reenvía OTP una vez (causaba rate-limit):
-  // useEffect(() => {
-  //   if (hasTriggeredInitialSend.current) return;
-  //   hasTriggeredInitialSend.current = true;
-  //   sendOtp(false);
-  // }, [email]);
-
-  // Temporizador para reenviar
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (resendTimer > 0) {
@@ -115,7 +147,6 @@ export default function VerifyOTPScreen() {
     return () => { if (interval) clearInterval(interval); };
   }, [resendTimer]);
 
-  // Temporizador de validez del código
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (codeValidityTimer > 0) {
@@ -148,15 +179,15 @@ export default function VerifyOTPScreen() {
       );
       if (verifyError) throw verifyError;
 
-      logMetric('otp_verify_success', { email: emailStr, intent, elapsedMs: Date.now() - startedAt });
+      logMetric('otp_verify_success', { email: emailStr, mode, elapsedMs: Date.now() - startedAt });
 
       try {
-        if (intent === 'login') {
+        if (mode === 'login') {
           router.replace({ pathname: '/(tabs)', params: { email: emailStr } });
         } else {
           router.replace({ pathname: '/vehicle-registration', params: { email: emailStr } });
         }
-        logMetric('navigation_success', { to: intent === 'login' ? '/(tabs)' : '/vehicle-registration' });
+        logMetric('navigation_success', { to: mode === 'login' ? '/(tabs)' : '/vehicle-registration' });
       } catch (navErr) {
         logError(navErr as any, 'VerifyOTPScreen.navigation_failed');
         logMetric('navigation_failed', { error: (navErr as any)?.message });
@@ -179,54 +210,144 @@ export default function VerifyOTPScreen() {
   if (isSendingInitialOtp) {
     return (
       <View style={[styles.safeArea, styles.centered]}>
-        <ActivityIndicator size="large" color="#34D399" />
-        <Text style={styles.loadingText}>Enviando código de verificación...</Text>
+        <LinearGradient
+          colors={['#ffffff', '#f0fdf9', '#ffffff']}
+          style={styles.loadingGradient}
+        >
+          <ActivityIndicator size="large" color="#10b981" />
+          <Text style={styles.loadingText}>Enviando código de verificación...</Text>
+        </LinearGradient>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Image
-            source={require('../../../../assets/images/login-image.png')} // Placeholder
-            style={styles.headerImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Verificación</Text>
-        </View>
-
-        <Text style={styles.subtitle}>Ingresa el código</Text>
-        <Text style={styles.caption}>
-          Hemos enviado un código de 6 dígitos a <Text style={styles.emailText}>{email}</Text>
-        </Text>
-
-        {/* Indicador de validez del código */}
-        <Text style={[styles.caption, { marginTop: -16 }]}>
-          Código válido por {codeValidityTimer > 0 ? `${codeValidityTimer}s` : '0s'}
-        </Text>
-
-        <OtpInput onComplete={setOtpCode} disabled={loading} ref={otpInputRef} autoFillFromClipboard />
-
-        <TouchableOpacity
-          style={[styles.button, (!otpCode || otpCode.length < 6) && styles.buttonDisabled]}
-          disabled={!otpCode || otpCode.length < 6 || loading}
-          onPress={verify}
+      <LinearGradient
+        colors={['#ffffff', '#f0fdf9', '#ffffff']}
+        style={styles.gradient}
+      >
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
         >
-          <Text style={styles.buttonText}>{loading ? 'Verificando...' : 'Verificar'}</Text>
-        </TouchableOpacity>
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1f2937" />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.resendContainer} onPress={resend} disabled={resendTimer > 0}>
-          <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
-            Reenviar código {resendTimer > 0 ? `(${resendTimer}s)` : ''}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          {/* Header Icon */}
+          <View style={styles.header}>
+            <Animated.View
+              style={[
+                styles.iconContainer,
+                {
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={styles.iconGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="mail-open" size={40} color="#ffffff" />
+              </LinearGradient>
+              <View style={styles.iconGlow} />
+            </Animated.View>
+
+            <Text style={styles.title}>Verifica tu correo</Text>
+            <Text style={styles.subtitle}>
+              Hemos enviado un código de 6 dígitos a
+            </Text>
+            <Text style={styles.emailText}>{email}</Text>
+          </View>
+
+          {/* Timer */}
+          <View style={styles.timerContainer}>
+            <Ionicons name="time-outline" size={16} color="#6b7280" />
+            <Text style={styles.timerText}>
+              Código válido por {Math.floor(codeValidityTimer / 60)}:{String(codeValidityTimer % 60).padStart(2, '0')}
+            </Text>
+          </View>
+
+          {/* OTP Input */}
+          <View style={styles.otpContainer}>
+            <OtpInput
+              onComplete={setOtpCode}
+              disabled={loading}
+              ref={otpInputRef}
+              autoFillFromClipboard
+            />
+          </View>
+
+          {/* Verify Button */}
+          <TouchableOpacity
+            style={[
+              styles.verifyButton,
+              (!otpCode || otpCode.length < 6 || loading) && styles.verifyButtonDisabled
+            ]}
+            disabled={!otpCode || otpCode.length < 6 || loading}
+            onPress={verify}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={(!otpCode || otpCode.length < 6 || loading) ? ['#9ca3af', '#6b7280'] : ['#10b981', '#059669']}
+              style={styles.verifyGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#ffffff" />
+                  <Text style={styles.verifyButtonText}>Verificando...</Text>
+                </View>
+              ) : (
+                <View style={styles.verifyContent}>
+                  <Text style={styles.verifyButtonText}>Verificar código</Text>
+                  <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                </View>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Resend Section */}
+          <View style={styles.resendSection}>
+            <Text style={styles.resendQuestion}>¿No recibiste el código?</Text>
+            <TouchableOpacity
+              style={styles.resendButton}
+              onPress={resend}
+              disabled={resendTimer > 0}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.resendText,
+                resendTimer > 0 && styles.resendTextDisabled
+              ]}>
+                {resendTimer > 0 ? `Reenviar en ${resendTimer}s` : 'Reenviar código'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Info */}
+          <View style={styles.infoSection}>
+            <Ionicons name="shield-checkmark" size={18} color="#10b981" />
+            <Text style={styles.infoText}>
+              Verifica tu bandeja de spam si no ves el correo
+            </Text>
+          </View>
+        </Animated.View>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
@@ -234,85 +355,182 @@ export default function VerifyOTPScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
   },
-  container: {
+  gradient: {
     flex: 1,
-    padding: 24,
+  },
+  loadingGradient: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   centered: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#374151',
+    fontWeight: '500',
+  },
+  container: {
+    flex: 1,
+    padding: 24,
   },
   backButton: {
-    position: 'absolute',
-    top: 24,
-    left: 24,
-    zIndex: 1,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f9fafb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 24,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  headerImage: {
-    width: 200,
-    height: 180,
+  iconContainer: {
+    position: 'relative',
     marginBottom: 24,
   },
+  iconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  iconGlow: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#10b981',
+    opacity: 0.2,
+    transform: [{ scale: 1.3 }],
+    zIndex: -1,
+  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  caption: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginBottom: 4,
   },
   emailText: {
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  button: {
-    width: '100%',
-    backgroundColor: '#34D399', // emerald-400
-    paddingVertical: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#10b981',
+    textAlign: 'center',
   },
-  resendContainer: {
-    marginTop: 24,
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  timerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  otpContainer: {
+    marginBottom: 32,
+  },
+  verifyButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 24,
+  },
+  verifyButtonDisabled: {
+    shadowOpacity: 0.1,
+  },
+  verifyGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  verifyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  verifyButtonText: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  resendSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  resendQuestion: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  resendButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   resendText: {
-    fontSize: 14,
-    color: '#3B82F6', // blue-500
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#10b981',
   },
-  resendDisabled: {
-    color: '#9CA3AF', // gray-400
+  resendTextDisabled: {
+    color: '#9ca3af',
+  },
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
